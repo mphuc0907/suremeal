@@ -1,0 +1,20 @@
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Frame 1686554157">
+<g clip-path="url(#clip0_417_6169)">
+<rect width="80" height="80" rx="40" fill="url(#paint0_linear_417_6169)"/>
+<g id="Group 1000006141">
+<circle id="Ellipse 217" cx="39.5" cy="31" r="11" fill="white"/>
+<ellipse id="Ellipse 218" cx="39.5" cy="70.5" rx="27.5" ry="24.5" fill="white"/>
+</g>
+</g>
+</g>
+<defs>
+<linearGradient id="paint0_linear_417_6169" x1="80" y1="40" x2="0" y2="40" gradientUnits="userSpaceOnUse">
+<stop stop-color="#42B1FF"/>
+<stop offset="1" stop-color="#C3E6FF"/>
+</linearGradient>
+<clipPath id="clip0_417_6169">
+<rect width="80" height="80" rx="40" fill="white"/>
+</clipPath>
+</defs>
+</svg>

@@ -1,0 +1,21 @@
+.edit-admin-phanloai .acf-table > tbody > tr > td{
+    border: 1px solid #eeeeee;
+}
+.edit-admin-phanloai .tr-first{
+    vertical-align: middle;
+    text-align: center;
+}
+
+.script-div{
+    padding: 15px;
+}
+
+input.errorr{
+    border: 1px solid #f35958;
+}
+.errorr{
+    color: red !important;
+}
+.hidden-im{
+    display: none !important;
+}

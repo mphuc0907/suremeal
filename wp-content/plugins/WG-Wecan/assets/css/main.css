@@ -1,0 +1,26 @@
+.clear{clear:both;}
+.fl{float:left;}
+.flr{float:right;}.pos1{position:relative;}
+
+.search-box input, .search-box select{vertical-align:top;}
+.leftform input[type="text"], .leftform input[type="number"], .leftform select, .leftform textarea{width:100%;}
+
+.view-url{margin-top:5px;font-style:italic;font-size:13px;}
+.view-url.inline{display:inline;margin-top:0;}
+.edit-url{display:none;}
+.wp-core-ui .button.btn-edit-url-cancel, .wp-core-ui .button.btn-edit-url-ok{display:none;}
+.orderid{width:65px;padding:3px 6px;}
+.box-alert{position:fixed;top:0;left:50%;margin-left:-70px;width:140px;height:45px;background:yellow;line-height:45px;text-align:center;color:#333;display:none;    z-index: 260000;}
+.search-box select{vertical-align:top;}
+.pagination-links a.current{background:#00a0d2;color:#fff;border-color:#00a0d2;}
+.textr{text-align:right !important;}
+
+.human_opt{display:inline-block;padding-left:20px;}
+.human_opt a{display:inline-block;padding: 0 15px;color:#333;border:1px solid #ccc;margin-left:10px;text-decoration:none;height:26px;line-height:26px;border-radius:3px;}
+.human_opt a.active,.human_opt a:hover{background:#0073aa;color:#fff;}
+
+.tablenav-link{display:inline-block;line-height: 24px;margin-left:10px;}
+.error{
+    color: red;
+    display: block;
+}
