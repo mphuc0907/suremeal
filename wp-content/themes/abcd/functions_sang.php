@@ -54,9 +54,9 @@ function validate_dealer_token()
 
     // Lay thong tin
     $dealer = $wpdb->get_row($wpdb->prepare(
-        "SELECT email, phone, first_name, last_name, avatar, addresses, password, provider, business_name, business_email, business_network, business_website, plan, status, ID FROM $table WHERE token = %s",
+        "SELECT email, phone, first_name, last_name, avatar, addresses, password, provider, business_name, business_email, business_network, business_website, plan, bank_name, account_number, routing_number, holder_name, swift, iban, status, ID FROM $table WHERE token = %s",
         $dealer_token
-    ));
+    )); 
 
     return $dealer ? $dealer : false;
 }
