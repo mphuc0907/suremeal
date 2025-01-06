@@ -21,6 +21,41 @@ $id = $authenticated_dealer->ID;
 // Lấy thông tin người dùng từ session
 $addresses = json_decode($_SESSION['addresses'], true);
 
+// Function to get dealer discount for a specific product
+function get_dealer_discount($dealer_id, $product_id)
+{
+    global $wpdb;
+    $discount = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT * FROM wp_discount_dealer 
+            WHERE id_dealer = %d AND product = %d",
+            $dealer_id,
+            $product_id
+        )
+    );
+    return $discount;
+}
+
+// Function to calculate final price with dealer discount
+function calculate_dealer_price($original_price, $discount)
+{
+    if (!$discount) return false;
+
+    if ($discount->discount_type == 0) {
+        // Fixed amount discount
+        return max(0, $original_price - $discount->discount_amount);
+    } else {
+        // Percentage discount
+        $discount_amount = $original_price * ($discount->discount_amount / 100);
+        return max(0, $original_price - $discount_amount);
+    }
+}
+
+$dealer_id = null;
+if ($authenticated_dealer) {
+    $dealer_id = $authenticated_dealer->ID;
+}
+
 $url = get_template_directory_uri();
 
 if (!empty($searchOrder)) {
@@ -184,6 +219,25 @@ get_header();
                             $class = 'warning';
                             $name = 'In progress';
                         }
+                        
+                        // Get dealer discount if dealer is logged in
+                        $dealer_discount = get_dealer_discount($dealer_id, $idPro);
+
+                        // Calculate final price based on dealer discount
+                        $final_price = $price;
+                        if ($dealer_discount) {
+                            // Calculate dealer discount price from original price
+                            $dealer_price = calculate_dealer_price($price, $dealer_discount);
+                            // If there's a sale price, compare it with dealer price
+                            if ($sale_price) {
+                                $final_price = min($dealer_price, $sale_price);
+                            } else {
+                                $final_price = $dealer_price;
+                            }
+                        } else {
+                            // If no dealer discount, use sale price if available
+                            $final_price = $sale_price ? $sale_price : $price;
+                        }
                     ?>
                         <div class="w-full flex flex-col items-center justify-center bg-white rounded-xl">
                             <div
@@ -241,21 +295,21 @@ get_header();
                                         </div>
                                     </div>
                                     <p class="text-body-md-regular text-gray-8"><?php pll_e('Quantity') ?>: <?= $decodedData[0]['qty'] ?></p>
-                                    <div class="flex flex-col items-end justify-end gap-1">
-                                        <?php if (empty($sale_price)) : ?>
-                                            <p class="text-body-md-medium text-gray-8"><?= formatBalance($price) ?> </p>
-
-                                        <?php else: ?>
-                                            <p class="text-body-md-medium text-gray-8"><?= formatBalance($sale_price) ?> </p>
-                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?>
-                                            </p>
-                                        <?php endif; ?>
-                                    </div>
+                                    <?php if ($final_price < $price): ?>
+                                        <div class="flex flex-col items-end justify-end gap-1">
+                                            <p class="text-body-md-medium text-gray-8"><?= formatBalance($final_price) ?> </p>
+                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="flex flex-col items-end justify-end gap-1">
+                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
 
                                 <!-- total -->
                                 <div class="flex items-center justify-between">
-                                    <a href="/order-detail/?order_code=<?= $value->order_code ?>" class="button button-trans p-0 text-body-md-semibold text-secondary">
+                                    <a href="/dealer-order-detail/?order_code=<?= $value->order_code ?>" class="button button-trans p-0 text-body-md-semibold text-secondary">
                                         <?php pll_e('View details') ?>
                                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <g id="Outline / Arrows / Alt Arrow Right">
@@ -300,121 +354,24 @@ get_header();
                             $class = 'warning';
                             $name = 'In progress';
                         }
-                    ?>
-                        <div class="w-full flex flex-col items-center justify-center bg-white rounded-xl">
-                            <div
-                                class="w-full flex flex-wrap items-center justify-between gap-2 px-8 py-6 border-b border-neutral-200 border-solid">
-                                <div class="flex flex-wrap items-center gap-4">
-                                    <p class="text-body-md-medium text-gray-8"><?= date('m/d/Y', $value->time_order) ?></p>
-                                    <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
-                                    <div class="flex items-center gap-2">
-                                        <p class="text-body-md-medium text-gray-8"><?php pll_e('Order code') ?>:</p>
-                                        <p class="text-body-md-medium text-neutral-500"><?= $value->order_code ?></p>
-                                        <input type="text" value="<?= $value->order_code ?>" id="myInput<?= $value->order_code ?>" style="display: none">
-                                        <button class="button button-trans p-0"  onclick="myFunction('myInput<?= $value->order_code ?>')">
-                                            <figure class="w-5 h-5"><img src="<?= $url ?>/assets/image/icon/duplicate.svg"
-                                                                            alt="icon">
-                                            </figure>
-                                        </button>
-                                    </div>
-                                    <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
-                                    <p class="text-body-md-medium text-neutral-500"><?php pll_e('Deliver') ?></p>
-                                    <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
-                                    <p class="text-body-md-medium text-neutral-500"><?= $countProduct ?> <?php pll_e('products') ?></p>
-                                    <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
-                                    <div class="flex items-center gap-2">
-                                        <a href="/pdf/?order_code=<?= $value->order_code ?>" target="_blank" class="text-body-md-medium text-neutral-500">Receipt</a>
-                                        <button class="button bg-trans" onclick="window.open('/pdf/?order_code=' . <?= $value->order_code ?>, '_blank')">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="20"
-                                                    viewBox="0 0 16 20" fill="none">
-                                                <path
-                                                        d="M9.75 1.24258V4.96007C9.75 5.46411 9.75 5.71614 9.84537 5.90866C9.92926 6.078 10.0631 6.21568 10.2278 6.30197C10.4149 6.40006 10.66 6.40006 11.15 6.40006H14.7642M11.5 10.9H4.5M11.5 14.5H4.5M6.25 7.3H4.5M9.75 1H5.2C3.72986 1 2.99479 1 2.43327 1.29428C1.93935 1.55314 1.53778 1.96619 1.28611 2.47423C1 3.05179 1 3.80786 1 5.32V14.68C1 16.1921 1 16.9482 1.28611 17.5258C1.53778 18.0338 1.93935 18.4469 2.43327 18.7057C2.99479 19 3.72986 19 5.2 19H10.8C12.2701 19 13.0052 19 13.5667 18.7057C14.0607 18.4469 14.4622 18.0338 14.7139 17.5258C15 16.9482 15 16.1921 15 14.68V6.4L9.75 1Z"
-                                                        stroke="#475467" stroke-width="1.5" stroke-linecap="round"
-                                                        stroke-linejoin="round" />
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </div>
+                        
+                        // Get dealer discount if dealer is logged in
+                        $dealer_discount = get_dealer_discount($dealer_id, $idPro);
 
-                                <div class="badge <?= $class ?>">
-                                    <?= $name ?>
-                                </div>
-                            </div>
-
-                            <div class="w-full py-6 px-8 flex flex-col gap-3 border-b border-solid border-neutral-200">
-                                <!-- product -->
-                                <div class="w-full flex flex-wrap lg:flex-nowrap justify-between items-center">
-                                    <div class="flex lg:flex-0 w-full md:w-2/3 max-w-[653px] items-center gap-5">
-                                        <figure
-                                            class="w-[60px] h-[60px] md:w-[100px] md:h-[100px] rounded-xl border border-solid border-neutral-200">
-                                            <img src="<?= $decodedData[0]['img'] ?>" alt="item">
-                                        </figure>
-                                        <div class="flex-1 flex flex-col gap-2">
-                                            <h2 class="text-body-md-medium text-gray-8 truncate-2row"><?= $decodedData[0]['title'] ?></h2>
-                                            <div class="neutral-200 text-body-sm-regular text-gray-7">
-                                                <?php pll_e('Type') ?>: <?= get_field('quantity', $idPro) ?> <?php pll_e('Pack') ?>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <p class="text-body-md-regular text-gray-8"><?php pll_e('Quantity') ?>: <?= $decodedData[0]['qty'] ?></p>
-                                    <div class="flex flex-col items-end justify-end gap-1">
-                                        <?php if (empty($sale_price)) : ?>
-                                            <p class="text-body-md-medium text-gray-8"><?= formatBalance($price) ?> </p>
-
-                                        <?php else: ?>
-                                            <p class="text-body-md-medium text-gray-8"><?= formatBalance($sale_price) ?> </p>
-                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?>
-                                            </p>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-
-                                <!-- total -->
-                                <div class="flex items-center justify-between">
-                                    <a href="/order-detail/?order_code=<?= $value->order_code ?>" class="button button-trans p-0 text-body-md-semibold text-secondary">
-                                        <?php pll_e('View details') ?>
-                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                            <g id="Outline / Arrows / Alt Arrow Right">
-                                                <path id="Vector (Stroke)" fill-rule="evenodd" clip-rule="evenodd" d="M8.51192 4.43057C8.82641 4.161 9.29989 4.19743 9.56946 4.51192L15.5695 11.5119C15.8102 11.7928 15.8102 12.2072 15.5695 12.4881L9.56946 19.4881C9.29989 19.8026 8.82641 19.839 8.51192 19.5695C8.19743 19.2999 8.161 18.8264 8.43057 18.5119L14.0122 12L8.43057 5.48811C8.161 5.17361 8.19743 4.70014 8.51192 4.43057Z" fill="#0E74BC" />
-                                            </g>
-                                        </svg>
-                                    </a>
-
-                                    <div class="flex items-center gap-2">
-                                        <p class="text-body-md-regular text-neutral-500"><?php pll_e('Total') ?>:</p>
-                                        <p class="text-heading-h6 font-medium text-primary"><?= formatBalance($value->price_payment) ?></p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-                <div class="mt-3 flex flex-col gap-6 order-tab" data-tab-id="in-progress">
-                    <?php foreach ($packaging as $key => $value) :
-
-                        $get_newest_order = $wpdb->get_results("SELECT * FROM wp_orders WHERE order_code = '{$value->order_code}' ORDER BY id DESC");
-                        $dataProduct = $get_newest_order[0]->dataproduct;
-                        $decodedData = json_decode(str_replace('\\', "", $dataProduct), true);
-                        $countProduct = count($decodedData);
-
-                        $idPro = $decodedData[0]['id'];
-                        $price = get_field('price', $idPro);
-                        $sale_price = get_field('sale_price', $idPro);
-                        $status = $value->status;
-                        $class = "";
-                        $name = "";
-                        if ($status == 1) {
-                            $class = 'warning';
-                            $name = pll__('Processing');
-                        } elseif ($status == 2) {
-                            $class = 'success';
-                            $name = pll__('Completed');
-                        } elseif ($status == 4) {
-                            $class = 'error';
-                            $name = pll__('Canceled');
+                        // Calculate final price based on dealer discount
+                        $final_price = $price;
+                        if ($dealer_discount) {
+                            // Calculate dealer discount price from original price
+                            $dealer_price = calculate_dealer_price($price, $dealer_discount);
+                            // If there's a sale price, compare it with dealer price
+                            if ($sale_price) {
+                                $final_price = min($dealer_price, $sale_price);
+                            } else {
+                                $final_price = $dealer_price;
+                            }
                         } else {
-                            $class = 'warning';
-                            $name = pll__('In progress');
+                            // If no dealer discount, use sale price if available
+                            $final_price = $sale_price ? $sale_price : $price;
                         }
                     ?>
                         <div class="w-full flex flex-col items-center justify-center bg-white rounded-xl">
@@ -473,21 +430,156 @@ get_header();
                                         </div>
                                     </div>
                                     <p class="text-body-md-regular text-gray-8"><?php pll_e('Quantity') ?>: <?= $decodedData[0]['qty'] ?></p>
-                                    <div class="flex flex-col items-end justify-end gap-1">
-                                        <?php if (empty($sale_price)) : ?>
-                                            <p class="text-body-md-medium text-gray-8"><?= formatBalance($price) ?> </p>
-
-                                        <?php else: ?>
-                                            <p class="text-body-md-medium text-gray-8"><?= formatBalance($sale_price) ?> </p>
-                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?>
-                                            </p>
-                                        <?php endif; ?>
-                                    </div>
+                                    <?php if ($final_price < $price): ?>
+                                        <div class="flex flex-col items-end justify-end gap-1">
+                                            <p class="text-body-md-medium text-gray-8"><?= formatBalance($final_price) ?> </p>
+                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="flex flex-col items-end justify-end gap-1">
+                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
 
                                 <!-- total -->
                                 <div class="flex items-center justify-between">
-                                    <a href="/order-detail/?order_code=<?= $value->order_code ?>" class="button button-trans p-0 text-body-md-semibold text-secondary">
+                                    <a href="/dealer-order-detail/?order_code=<?= $value->order_code ?>" class="button button-trans p-0 text-body-md-semibold text-secondary">
+                                        <?php pll_e('View details') ?>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <g id="Outline / Arrows / Alt Arrow Right">
+                                                <path id="Vector (Stroke)" fill-rule="evenodd" clip-rule="evenodd" d="M8.51192 4.43057C8.82641 4.161 9.29989 4.19743 9.56946 4.51192L15.5695 11.5119C15.8102 11.7928 15.8102 12.2072 15.5695 12.4881L9.56946 19.4881C9.29989 19.8026 8.82641 19.839 8.51192 19.5695C8.19743 19.2999 8.161 18.8264 8.43057 18.5119L14.0122 12L8.43057 5.48811C8.161 5.17361 8.19743 4.70014 8.51192 4.43057Z" fill="#0E74BC" />
+                                            </g>
+                                        </svg>
+                                    </a>
+
+                                    <div class="flex items-center gap-2">
+                                        <p class="text-body-md-regular text-neutral-500"><?php pll_e('Total') ?>:</p>
+                                        <p class="text-heading-h6 font-medium text-primary"><?= formatBalance($value->price_payment) ?></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <div class="mt-3 flex flex-col gap-6 order-tab" data-tab-id="in-progress">
+                    <?php foreach ($packaging as $key => $value) :
+
+                        $get_newest_order = $wpdb->get_results("SELECT * FROM wp_orders WHERE order_code = '{$value->order_code}' ORDER BY id DESC");
+                        $dataProduct = $get_newest_order[0]->dataproduct;
+                        $decodedData = json_decode(str_replace('\\', "", $dataProduct), true);
+                        $countProduct = count($decodedData);
+
+                        $idPro = $decodedData[0]['id'];
+                        $price = get_field('price', $idPro);
+                        $sale_price = get_field('sale_price', $idPro);
+                        $status = $value->status;
+                        $class = "";
+                        $name = "";
+                        if ($status == 1) {
+                            $class = 'warning';
+                            $name = pll__('Processing');
+                        } elseif ($status == 2) {
+                            $class = 'success';
+                            $name = pll__('Completed');
+                        } elseif ($status == 4) {
+                            $class = 'error';
+                            $name = pll__('Canceled');
+                        } else {
+                            $class = 'warning';
+                            $name = pll__('In progress');
+                        }
+                        
+                        // Get dealer discount if dealer is logged in
+                        $dealer_discount = get_dealer_discount($dealer_id, $idPro);
+
+                        // Calculate final price based on dealer discount
+                        $final_price = $price;
+                        if ($dealer_discount) {
+                            // Calculate dealer discount price from original price
+                            $dealer_price = calculate_dealer_price($price, $dealer_discount);
+                            // If there's a sale price, compare it with dealer price
+                            if ($sale_price) {
+                                $final_price = min($dealer_price, $sale_price);
+                            } else {
+                                $final_price = $dealer_price;
+                            }
+                        } else {
+                            // If no dealer discount, use sale price if available
+                            $final_price = $sale_price ? $sale_price : $price;
+                        }
+                    ?>
+                        <div class="w-full flex flex-col items-center justify-center bg-white rounded-xl">
+                            <div
+                                class="w-full flex flex-wrap items-center justify-between gap-2 px-8 py-6 border-b border-neutral-200 border-solid">
+                                <div class="flex flex-wrap items-center gap-4">
+                                    <p class="text-body-md-medium text-gray-8"><?= date('m/d/Y', $value->time_order) ?></p>
+                                    <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
+                                    <div class="flex items-center gap-2">
+                                        <p class="text-body-md-medium text-gray-8"><?php pll_e('Order code') ?>:</p>
+                                        <p class="text-body-md-medium text-neutral-500"><?= $value->order_code ?></p>
+                                        <input type="text" value="<?= $value->order_code ?>" id="myInput<?= $value->order_code ?>" style="display: none">
+                                        <button class="button button-trans p-0"  onclick="myFunction('myInput<?= $value->order_code ?>')">
+                                            <figure class="w-5 h-5"><img src="<?= $url ?>/assets/image/icon/duplicate.svg"
+                                                                            alt="icon">
+                                            </figure>
+                                        </button>
+                                    </div>
+                                    <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
+                                    <p class="text-body-md-medium text-neutral-500"><?php pll_e('Deliver') ?></p>
+                                    <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
+                                    <p class="text-body-md-medium text-neutral-500"><?= $countProduct ?> <?php pll_e('products') ?></p>
+                                    <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
+                                    <div class="flex items-center gap-2">
+                                        <a href="/pdf/?order_code=<?= $value->order_code ?>" target="_blank" class="text-body-md-medium text-neutral-500">Receipt</a>
+                                        <button class="button bg-trans" onclick="window.open('/pdf/?order_code=' . <?= $value->order_code ?>, '_blank')">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="20"
+                                                    viewBox="0 0 16 20" fill="none">
+                                                <path
+                                                        d="M9.75 1.24258V4.96007C9.75 5.46411 9.75 5.71614 9.84537 5.90866C9.92926 6.078 10.0631 6.21568 10.2278 6.30197C10.4149 6.40006 10.66 6.40006 11.15 6.40006H14.7642M11.5 10.9H4.5M11.5 14.5H4.5M6.25 7.3H4.5M9.75 1H5.2C3.72986 1 2.99479 1 2.43327 1.29428C1.93935 1.55314 1.53778 1.96619 1.28611 2.47423C1 3.05179 1 3.80786 1 5.32V14.68C1 16.1921 1 16.9482 1.28611 17.5258C1.53778 18.0338 1.93935 18.4469 2.43327 18.7057C2.99479 19 3.72986 19 5.2 19H10.8C12.2701 19 13.0052 19 13.5667 18.7057C14.0607 18.4469 14.4622 18.0338 14.7139 17.5258C15 16.9482 15 16.1921 15 14.68V6.4L9.75 1Z"
+                                                        stroke="#475467" stroke-width="1.5" stroke-linecap="round"
+                                                        stroke-linejoin="round" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="badge <?= $class ?>">
+                                    <?= $name ?>
+                                </div>
+                            </div>
+
+                            <div class="w-full py-6 px-8 flex flex-col gap-3 border-b border-solid border-neutral-200">
+                                <!-- product -->
+                                <div class="w-full flex flex-wrap lg:flex-nowrap justify-between items-center">
+                                    <div class="flex lg:flex-0 w-full md:w-2/3 max-w-[653px] items-center gap-5">
+                                        <figure
+                                            class="w-[60px] h-[60px] md:w-[100px] md:h-[100px] rounded-xl border border-solid border-neutral-200">
+                                            <img src="<?= $decodedData[0]['img'] ?>" alt="item">
+                                        </figure>
+                                        <div class="flex-1 flex flex-col gap-2">
+                                            <h2 class="text-body-md-medium text-gray-8 truncate-2row"><?= $decodedData[0]['title'] ?></h2>
+                                            <div class="neutral-200 text-body-sm-regular text-gray-7">
+                                                <?php pll_e('Type') ?>: <?= get_field('quantity', $idPro) ?> <?php pll_e('Pack') ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <p class="text-body-md-regular text-gray-8"><?php pll_e('Quantity') ?>: <?= $decodedData[0]['qty'] ?></p>
+                                    <?php if ($final_price < $price): ?>
+                                        <div class="flex flex-col items-end justify-end gap-1">
+                                            <p class="text-body-md-medium text-gray-8"><?= formatBalance($final_price) ?> </p>
+                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="flex flex-col items-end justify-end gap-1">
+                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+
+                                <!-- total -->
+                                <div class="flex items-center justify-between">
+                                    <a href="/dealer-order-detail/?order_code=<?= $value->order_code ?>" class="button button-trans p-0 text-body-md-semibold text-secondary">
                                         <?php pll_e('View details') ?>
                                         <figure><img src="<?= $url ?>/assets/image/icon/chev-right-24-second.svg"
                                                 alt="icon">
@@ -529,6 +621,25 @@ get_header();
                         } else {
                             $class = 'warning';
                             $name = 'In progress';
+                        }
+                        
+                        // Get dealer discount if dealer is logged in
+                        $dealer_discount = get_dealer_discount($dealer_id, $idPro);
+
+                        // Calculate final price based on dealer discount
+                        $final_price = $price;
+                        if ($dealer_discount) {
+                            // Calculate dealer discount price from original price
+                            $dealer_price = calculate_dealer_price($price, $dealer_discount);
+                            // If there's a sale price, compare it with dealer price
+                            if ($sale_price) {
+                                $final_price = min($dealer_price, $sale_price);
+                            } else {
+                                $final_price = $dealer_price;
+                            }
+                        } else {
+                            // If no dealer discount, use sale price if available
+                            $final_price = $sale_price ? $sale_price : $price;
                         }
                     ?>
                         <div class="w-full flex flex-col items-center justify-center bg-white rounded-xl">
@@ -587,21 +698,21 @@ get_header();
                                         </div>
                                     </div>
                                     <p class="text-body-md-regular text-gray-8"><?php pll_e('Quantity') ?>: <?= $decodedData[0]['qty'] ?></p>
-                                    <div class="flex flex-col items-end justify-end gap-1">
-                                        <?php if (empty($sale_price)) : ?>
-                                            <p class="text-body-md-medium text-gray-8"><?= formatBalance($price) ?> </p>
-
-                                        <?php else: ?>
-                                            <p class="text-body-md-medium text-gray-8"><?= formatBalance($sale_price) ?> </p>
-                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?>
-                                            </p>
-                                        <?php endif; ?>
-                                    </div>
+                                    <?php if ($final_price < $price): ?>
+                                        <div class="flex flex-col items-end justify-end gap-1">
+                                            <p class="text-body-md-medium text-gray-8"><?= formatBalance($final_price) ?> </p>
+                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="flex flex-col items-end justify-end gap-1">
+                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
 
                                 <!-- total -->
                                 <div class="flex items-center justify-between">
-                                    <a href="/order-detail/?order_code=<?= $value->order_code ?>" class="button button-trans p-0 text-body-md-semibold text-secondary">
+                                    <a href="/dealer-order-detail/?order_code=<?= $value->order_code ?>" class="button button-trans p-0 text-body-md-semibold text-secondary">
                                         <?php pll_e('View details') ?>
                                         <figure><img src="<?= $url ?>/assets/image/icon/chev-right-24-second.svg"
                                                 alt="icon">
@@ -643,6 +754,25 @@ get_header();
                         } else {
                             $class = 'warning';
                             $name = pll__('In progress');
+                        }
+                        
+                        // Get dealer discount if dealer is logged in
+                        $dealer_discount = get_dealer_discount($dealer_id, $idPro);
+
+                        // Calculate final price based on dealer discount
+                        $final_price = $price;
+                        if ($dealer_discount) {
+                            // Calculate dealer discount price from original price
+                            $dealer_price = calculate_dealer_price($price, $dealer_discount);
+                            // If there's a sale price, compare it with dealer price
+                            if ($sale_price) {
+                                $final_price = min($dealer_price, $sale_price);
+                            } else {
+                                $final_price = $dealer_price;
+                            }
+                        } else {
+                            // If no dealer discount, use sale price if available
+                            $final_price = $sale_price ? $sale_price : $price;
                         }
                     ?>
                         <div class="w-full flex flex-col items-center justify-center bg-white rounded-xl">
@@ -701,21 +831,21 @@ get_header();
                                         </div>
                                     </div>
                                     <p class="text-body-md-regular text-gray-8"><?php pll_e('Quantity') ?>: <?= $decodedData[0]['qty'] ?></p>
-                                    <div class="flex flex-col items-end justify-end gap-1">
-                                        <?php if (empty($sale_price)) : ?>
-                                            <p class="text-body-md-medium text-gray-8"><?= formatBalance($price) ?> </p>
-
-                                        <?php else: ?>
-                                            <p class="text-body-md-medium text-gray-8"><?= formatBalance($sale_price) ?> </p>
-                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?>
-                                            </p>
-                                        <?php endif; ?>
-                                    </div>
+                                    <?php if ($final_price < $price): ?>
+                                        <div class="flex flex-col items-end justify-end gap-1">
+                                            <p class="text-body-md-medium text-gray-8"><?= formatBalance($final_price) ?> </p>
+                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="flex flex-col items-end justify-end gap-1">
+                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
+                                        </div>
+                                    <?php endif; ?>
                                 </div>
 
                                 <!-- total -->
                                 <div class="flex items-center justify-between">
-                                    <a href="/order-detail/?order_code=<?= $value->order_code ?>" class="button button-trans p-0 text-body-md-semibold text-secondary">
+                                    <a href="/dealer-order-detail/?order_code=<?= $value->order_code ?>" class="button button-trans p-0 text-body-md-semibold text-secondary">
                                         <?php pll_e('View details') ?>
                                         <figure><img src="<?= $url ?>/assets/image/icon/chev-right-24-second.svg"
                                                 alt="icon">

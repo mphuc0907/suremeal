@@ -1,7 +1,43 @@
-<?php /* Template Name: Order-detail */ ?>
+<?php /* Template Name: Dealer-Order-detail */ ?>
 <?php
 $url = get_template_directory_uri();
 get_header();
+
+// Function to get dealer discount for a specific product
+function get_dealer_discount($dealer_id, $product_id)
+{
+    global $wpdb;
+    $discount = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT * FROM wp_discount_dealer 
+            WHERE id_dealer = %d AND product = %d",
+            $dealer_id,
+            $product_id
+        )
+    );
+    return $discount;
+}
+
+// Function to calculate final price with dealer discount
+function calculate_dealer_price($original_price, $discount)
+{
+    if (!$discount) return false;
+
+    if ($discount->discount_type == 0) {
+        // Fixed amount discount
+        return max(0, $original_price - $discount->discount_amount);
+    } else {
+        // Percentage discount
+        $discount_amount = $original_price * ($discount->discount_amount / 100);
+        return max(0, $original_price - $discount_amount);
+    }
+}
+
+$authenticated_dealer = validate_dealer_token();
+$dealer_id = null;
+if ($authenticated_dealer) {
+    $dealer_id = $authenticated_dealer->ID;
+}
 
 global $wpdb;
 $code = $_GET['order_code'];
@@ -64,14 +100,14 @@ if ($status == 1) {
                     </li>
                     <span>/</span>
                     <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
-                        <a href="<?= home_url() ?>/person-info/" class="text-secondary hover:text-primary" itemprop="item">
+                        <a href="<?= home_url() ?>/dealer-personal-informmation/" class="text-secondary hover:text-primary" itemprop="item">
                             <span itemprop="name">Personal</span>
                         </a>
                         <meta itemprop="position" content="1" />
                     </li>
                     <span>/</span>
                     <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
-                        <a href="<?= home_url() ?>/order-info/" class="text-secondary hover:text-primary" itemprop="item">
+                        <a href="<?= home_url() ?>/dealer-order-info/" class="text-secondary hover:text-primary" itemprop="item">
                             <span itemprop="name">Order information</span>
                         </a>
                         <meta itemprop="position" content="1" />
@@ -245,7 +281,27 @@ if ($status == 1) {
                                     $idPro = $va['id'];
                                     $price = get_field('price', $idPro);
                                     $sale_price = get_field('sale_price', $idPro);
-                                    $price_sub += $price * $va['qty'];
+                                    
+                                    // Get dealer discount if dealer is logged in
+                                    $dealer_discount = get_dealer_discount($dealer_id, $idPro);
+
+                                    // Calculate final price based on dealer discount
+                                    $final_price = $price;
+                                    if ($dealer_discount) {
+                                        // Calculate dealer discount price from original price
+                                        $dealer_price = calculate_dealer_price($price, $dealer_discount);
+                                        // If there's a sale price, compare it with dealer price
+                                        if ($sale_price) {
+                                            $final_price = min($dealer_price, $sale_price);
+                                        } else {
+                                            $final_price = $dealer_price;
+                                        }
+                                    } else {
+                                        // If no dealer discount, use sale price if available
+                                        $final_price = $sale_price ? $sale_price : $price;
+                                    }
+
+                                    $price_sub += $final_price * $va['qty'];
                                 ?>
                                     <div
                                         class="w-full flex flex-wrap md:flex-row gap-6 lg:gap-0 justify-between items-end md:items-center">
@@ -263,11 +319,11 @@ if ($status == 1) {
                                         </div>
                                         <p class="text-body-md-regular text-gray-8">Quantity: <?= $va['qty'] ?></p>
 
-                                        <p class="text-body-md-medium text-primary"><?php if (empty($sale_price)) {
-                                                                                        echo formatBalance($price);
-                                                                                    } else {
-                                                                                        echo formatBalance($sale_price);
-                                                                                    } ?></p>
+                                        <?php if ($final_price < $price): ?>
+                                            <p class="text-body-md-medium text-primary"><?= formatBalance($final_price) ?></p>
+                                        <?php else: ?>
+                                            <p class="text-body-md-medium text-primary"><?= formatBalance($price) ?></p>
+                                        <?php endif; ?>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
