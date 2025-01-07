@@ -30,6 +30,7 @@ $last_name = $authenticated_dealer->last_name;
 $avatar = $authenticated_dealer->avatar;
 $addresses = json_decode($authenticated_dealer->addresses, true) ?: [];
 $provider = $authenticated_dealer->provider;
+$status = $authenticated_dealer->status;
 
 $password_is_null = $authenticated_dealer->password == '';
 
@@ -203,6 +204,17 @@ get_header();
                     <li class="flex items-center pt-4 pb-4 pl-6 item-f my-order">
                     <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/dealer-order-info"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/cart.png" alt=""><img class="mr-3 w-6 active hidden" src="<?= $url ?>/assets/dealer/img/cart_ac.png " alt=""><span class="menu-item">My orders</span></a>
                     </li>
+                    <?php if($status == 2): ?>
+                        <li class="flex items-center pt-4 pb-4 pl-6 item-f management">
+                        <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/dealer-affiliate-order"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/tabler_shopping-bag-discount.png" alt=""><img class="mr-3 w-6 active hidden" src="<?= $url ?>/assets/dealer/img/tabler_shopping-bag-discount_ac.png" alt=""><span class="menu-item">Affiliate orders</span></a>
+                        </li>
+                        <li class="flex items-center pt-4 pb-4 pl-6 item-f management">
+                        <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/dealer-affiliate-customization"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/material-symbols_link.png" alt=""><img class="mr-3 w-6 hidden active" src="<?= $url ?>/assets/dealer/img/material-symbols_link_ac.png" alt=""><span class="menu-item">Affiliate link<br>customization</span></a>
+                        </li>
+                        <li class="flex items-center pt-4 pb-4 pl-6 item-f management">
+                        <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/point-management"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/reward.png" alt=""><img class="mr-3 w-6 hidden active" src="<?= $url ?>/assets/dealer/img/reward_ac.png" alt=""><span class="menu-item">Point management</span></a>
+                        </li>
+                    <?php endif; ?>
                     <li class="pt-4 pb-4 pl-6 item-f account checkout-menu-active" >
                     <div class="flex items-center no-underline w-full" href="" x-on:click="top = ! top"><img class="mr-3 w-6 default hidden" src="<?= $url ?>/assets/dealer/img/circle.png" alt=""><img class="mr-3 w-6 active" src="<?= $url ?>/assets/dealer/img/circle_ac.png" alt="">
                         <span class="menu-item cursor-pointer">Account<br>information</span>
@@ -219,6 +231,11 @@ get_header();
                         <li class="mt-2">
                             <a class="no-underline text-sm" href="<?= home_url() ?>/dealer-business-informmation">Business information</a>
                         </li>
+                        <?php if($status == 2): ?>
+                            <li class="mt-2">
+                                <a class="no-underline text-sm" href="<?= home_url() ?>/dealer-bank-informmation">Bank account information</a>
+                            </li>
+                        <?php endif; ?>
                     </ul>
                     </li>
                 </ul>

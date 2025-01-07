@@ -246,7 +246,7 @@ get_header();
 
                                 // Get dealer discount if dealer is logged in
                                 $dealer_discount = $dealer_id ? get_dealer_discount($dealer_id, $value->ID) : null;
-        
+
                                 // Calculate final price based on dealer discount
                                 $final_price = $price;
                                 if ($dealer_discount) {
@@ -389,14 +389,14 @@ get_header();
                             foreach ($group_sup_product['product_list'] as $key => $product) :
                                 $product_post = $product['product_post'];
 
-                                $featured_image_url = get_the_post_thumbnail_url($product->ID, 'full');
+                                $featured_image_url = get_the_post_thumbnail_url($product_post->ID, 'full');
 
-                                $price = get_post_meta($product->ID, 'price', true);
-                                $sale_price = get_field('sale_price', $product->ID);
-                                $desc = get_post_meta($product->ID, 'short_description', true);
+                                $price = get_post_meta($product_post->ID, 'price', true);
+                                $sale_price = get_field('sale_price', $product_post->ID);
+                                $desc = get_post_meta($product_post->ID, 'short_description', true);
 
                                 // Get product categories
-                                $categories = get_the_terms($product->ID, 'category_product');
+                                $categories = get_the_terms($product_post->ID, 'category_product');
                                 $category_names = [];
                                 if ($categories) :
                                     foreach ($categories as $category) :
@@ -406,7 +406,7 @@ get_header();
                                 $matching_categories = array_intersect(['SureMeal', 'Supplement Depot'], $category_names);
 
                                 // Get dealer discount if dealer is logged in
-                                $dealer_discount = $dealer_id ? get_dealer_discount($dealer_id, $product->ID) : null;
+                                $dealer_discount = $dealer_id ? get_dealer_discount($dealer_id, $product_post->ID) : null;
 
                                 // Calculate final price based on dealer discount
                                 $final_price = $price;
@@ -481,16 +481,22 @@ get_header();
                                                 </p>
                                                 <div class="flex gap-3 items-center">
                                                     <span class="text-body-sm-regular text-neutral-500"><?php pll_e('From') ?></span>
-                                                    <?php if ($sale_price) :?>
+                                                    <?php if ($final_price < $price): ?>
                                                         <div class="flex items-center gap-2">
-                                                            <p class=" text-body-md-medium text-neutral-500 line-through"><?= formatBalance($price) ?></p>
-                                                            <p class="text-heading-h7 text-gray-9"><?= formatBalance($sale_price) ?></p>
+                                                            <p class="text-body-md-medium text-neutral-500 line-through">
+                                                                <?= formatBalance($price) ?>
+                                                            </p>
+                                                            <p class="text-heading-h7 text-gray-9">
+                                                                <?= formatBalance($final_price) ?>
+                                                            </p>
                                                         </div>
-                                                    <?php else:?>
+                                                    <?php else: ?>
                                                         <div class="flex items-center gap-2">
-                                                            <p class="text-heading-h7 text-gray-9"><?= formatBalance($price) ?></p>
+                                                            <p class="text-heading-h7 text-gray-9">
+                                                                <?= formatBalance($price) ?>
+                                                            </p>
                                                         </div>
-                                                    <?php endif;?>
+                                                    <?php endif; ?>
                                                 </div>
                                             </div>
                                         </div>
@@ -553,6 +559,7 @@ get_header();
         .product-item.active {
             color: #0E74BC;
             background: #FFF;
+            font-weight: 600;
             box-shadow: 0px 4px 20px 0px #C2EBFF;
         }
     </style>
@@ -644,7 +651,7 @@ get_header();
                             <!-- Additional required wrapper -->
                             <div class="swiper-wrapper">
                                 <!-- Slides -->
-                                <?php foreach ($category_data['product_list'] as $product):
+                                <?php foreach ($category_data['product_list'] as $key => $product):
                                     $product_id = $product->ID;
                                     $product_title = $product->post_title;
                                     $desc = get_post_meta($product_id, 'short_description', true);
@@ -654,6 +661,25 @@ get_header();
                                         $instock = 0;
                                     }
                                     $sale_price = get_field('sale_price', $product->ID);
+
+                                    // Get dealer discount if dealer is logged in
+                                    $dealer_discount = $dealer_id ? get_dealer_discount($dealer_id, $product->ID) : null;
+
+                                    // Calculate final price based on dealer discount
+                                    $final_price = $price;
+                                    if ($dealer_discount) {
+                                        // Calculate dealer discount price from original price
+                                        $dealer_price = calculate_dealer_price($price, $dealer_discount);
+                                        // If there's a sale price, compare it with dealer price
+                                        if ($sale_price) {
+                                            $final_price = min($dealer_price, $sale_price);
+                                        } else {
+                                            $final_price = $dealer_price;
+                                        }
+                                    } else {
+                                        // If no dealer discount, use sale price if available
+                                        $final_price = $sale_price ? $sale_price : $price;
+                                    }
                                 ?>
                                     <div class="swiper-slide w-full supplement-pro"
                                         data-category="<?= $category_data['category'][0]->slug ?>">
@@ -699,14 +725,20 @@ get_header();
                                                     </p>
                                                     <div class="flex gap-3 items-center">
                                                         <span class="text-body-sm-regular text-neutral-500"><?php pll_e('From') ?></span>
-                                                        <?php if ($sale_price) : ?>
+                                                        <?php if ($final_price < $price): ?>
                                                             <div class="flex items-center gap-2">
-                                                                <p class=" text-body-md-medium text-neutral-500 line-through"><?= formatBalance($price) ?></p>
-                                                                <p class="text-heading-h7 text-gray-9"><?= formatBalance($sale_price) ?></p>
+                                                                <p class="text-body-md-medium text-neutral-500 line-through">
+                                                                    <?= formatBalance($price) ?>
+                                                                </p>
+                                                                <p class="text-heading-h7 text-gray-9">
+                                                                    <?= formatBalance($final_price) ?>
+                                                                </p>
                                                             </div>
                                                         <?php else: ?>
                                                             <div class="flex items-center gap-2">
-                                                                <p class="text-heading-h7 text-gray-9"><?= formatBalance($price) ?></p>
+                                                                <p class="text-heading-h7 text-gray-9">
+                                                                    <?= formatBalance($price) ?>
+                                                                </p>
                                                             </div>
                                                         <?php endif; ?>
                                                     </div>

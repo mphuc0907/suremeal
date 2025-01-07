@@ -112,7 +112,6 @@ add_admin_js('jquery-2.2.4.min.js');
             foreach ($myrows as $key => $dealer) {
                 $stt = $key + 1;
                 $editlink = $module_path . '&sub=edit&id=' . $dealer->id;
-                $deletelink = $module_path . '&sub=delete&id=' . $dealer->id;
                 ?>
                 <tr>
                     <td><?= $tt ?></td>
@@ -125,9 +124,8 @@ add_admin_js('jquery-2.2.4.min.js');
                     <td><?= $dealer->address ?></td>
                     <td>
                         <a href="<?= $editlink ?>" class="detail-action" data-id="<?= $dealer->id ?>">Edit</a>
-                    </td>
-                    <td>
-                        <a href="<?= $deletelink ?>" class="detail-action" data-id="<?= $dealer->id ?>">Delete</a>
+                        | 
+                        <a href="javascript:void(0)" onclick="deleteDealer(<?= $dealer->id ?>)" class="delete-action" style="color: red;">Delete</a>
                     </td>
                 </tr>
             <?php } ?>
@@ -144,3 +142,59 @@ add_admin_js('jquery-2.2.4.min.js');
 add_admin_js('common.js');
 ?>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+function deleteDealer(id) {
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "You won't be able to revert this!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show loading animation
+            document.querySelector('.divgif').style.display = 'block';
+            
+            // Send delete request
+            jQuery.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'delete_dealer',
+                    dealer_id: id,
+                    security: ajax_object.nonce
+                },
+                success: function(response) {
+                    document.querySelector('.divgif').style.display = 'none';
+                    
+                    if (response.success) {
+                        Swal.fire(
+                            'Deleted!',
+                            'Dealer has been deleted.',
+                            'success'
+                        ).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire(
+                            'Error!',
+                            'Something went wrong.',
+                            'error'
+                        );
+                    }
+                },
+                error: function() {
+                    document.querySelector('.divgif').style.display = 'none';
+                    Swal.fire(
+                        'Error!',
+                        'Something went wrong.',
+                        'error'
+                    );
+                }
+            });
+        }
+    });
+}
+</script>

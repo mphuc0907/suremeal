@@ -15,6 +15,7 @@ if ($authenticated_dealer) {
     $dealer_last_name = $authenticated_dealer->last_name;
     $dealer_avatar = $authenticated_dealer->avatar;
 }
+
 $arr_lang = languageArr();
 $link_directory = get_template_directory_uri();
 $url = get_template_directory_uri();
@@ -416,10 +417,10 @@ foreach ($menu_1 as $mn) {
                                                                 <!-- 1 col sub menu -->
                                                                 <div class="w-full flex flex-col gap-6">
                                                                     <!-- thẻ head của sub menu         -->
-                                                                    <a href="#!" class="sub-menu-title flex items-center gap-2">
+                                                                    <div class="sub-menu-title flex items-center gap-2">
                                                                         <figure class="w-6 h-6"><img src="<?= $item2['icon'] ?>" alt="icon"></figure>
                                                                         <p class="text-body-md-semibold"><?= $item2['title'] ?></p>
-                                                                    </a>
+                                                                    </div>
                                                                     <hr class="divider">
                                                                     <!-- sub menu list ra ở đây -->
 
@@ -484,7 +485,7 @@ foreach ($menu_1 as $mn) {
                             </button>
                         </div>
                         <div
-                            class="breadcrumb-header hidden fixed w-[80vw] max-w-[400px] h-[100vh] top-0 right-0 z-[5] shadow-1 transform transition-transform duration-300 ease-in-out translate-x-full">
+                            class="breadcrumb-header hidden fixed w-[90vw] max-w-[400px] h-[100vh] top-0 right-0 z-[5] shadow-1 transform transition-transform duration-300 ease-in-out translate-x-full">
                             <div class="flex flex-col gap-6 bg-white w-full max-h-[100vh] overflow-y-auto h-full px-6 pt-6">
                                 <div class="flex items-center justify-between">
                                     <a href="/">
@@ -527,18 +528,110 @@ foreach ($menu_1 as $mn) {
                                             placeholder="<?php pll_e('Search everything') ?>">
                                     </form>
                                 </div>
+                                <style>
+                                    .open-sub-mobile,
+                                    .sub-sub-button {
+                                        transform: rotate(180deg);
+                                        transition: all .5s ease-in-out;
+                                    }
+
+                                    .open-sub-mobile.active,
+                                    .sub-sub-button.active {
+                                        transform: rotate(0);
+                                        transition: all .5s ease-in-out;
+                                    }
+                                </style>
                                 <nav>
-                                    <?php
-                                    wp_nav_menu(array(
-                                        'menu'            => 'Menu mobile',
-                                        'container'       => 'ul',
-                                        'container_class' => '',
-                                        'menu_class'      => 'flex flex-col gap-2 2xl:gap-4 menu-mobile',
-                                        'depth'           => 2,
-                                        'fallback_cb'     => 'wp_page_menu',
-                                    ));
-                                    ?>
+                                    <ul id="menu-menu-main" class="flex flex-col items-center gap-2 2xl:gap-4 ">
+                                        <?php foreach ($menu_main as $key => $item) :
+
+                                        ?>
+                                            <li class=" <?php if ($item['check_menu_3'] == 'true') : ?>sub-wrap  <?php endif; ?> <?php if ($item['active'] == 'active') :  ?>text-secondary <?php else: ?> text-gray-9<?php endif; ?> w-full px-3 2xl:px-6 py-2 2xl:py-3 hover:text-secondary text-body-md-semibold">
+                                                <div class="flex items-center justify-between">
+                                                    <a href="<?= $item['url'] ?>"><?= $item['title'] ?></a>
+                                                    <div class="<?= $item['check_menu_3'] == 'true' ? 'block' : 'hidden' ?> open-sub-mobile">
+                                                        <figure class="w-6 h-6">
+                                                            <img src="<?= $url ?>/assets/image/icon/chev-up-24.svg" alt="">
+                                                        </figure>
+                                                    </div>
+                                                </div>
+                                                <?php
+                                                if (!empty($item['menu_sub'])) :
+                                                ?>
+                                                    <?php if ($item['check_menu_3'] == 'true') :
+
+                                                    ?>
+                                                        <div class="sub-menu mobile">
+
+                                                            <div class="grid grid-cols-1 gap-6">
+                                                                <?php
+                                                                foreach ($item['menu_sub'] as $key2 => $item2):
+
+                                                                ?>
+                                                                    <!-- 1 col sub menu -->
+                                                                    <div class="sub-sub-wrap w-full flex flex-col gap-4 py-2 px-1">
+                                                                        <!-- thẻ head của sub menu         -->
+                                                                        <div class="sub-sub-title flex items-center gap-2">
+                                                                            <figure class="w-6 h-6"><img src="<?= $item2['icon'] ?>" alt="icon"></figure>
+                                                                            <p class="text-body-md-semibold"><?= $item2['title'] ?></p>
+                                                                            <figure class="sub-sub-button ml-[auto] w-5 h-5">
+                                                                                <img src="<?= $url ?>/assets/image/icon/chev-up-24.svg" alt="">
+                                                                            </figure>
+                                                                        </div>
+                                                                        <hr class="divider">
+                                                                        <!-- sub menu list ra ở đây -->
+
+                                                                        <div class="sub-sub-content w-full flex flex-col gap-4">
+                                                                            <!-- 1 item menu -->
+                                                                            <?php foreach ($item2['menusub_2'] as $key3 => $item3) : ?>
+                                                                                <a href="<?= $item3['url'] ?>" class="sub-menu-hover">
+                                                                                    <p class="text-body-md-medium"><?= $item3['title'] ?></p>
+                                                                                </a>
+                                                                            <?php endforeach; ?>
+                                                                        </div>
+
+                                                                    </div>
+                                                                <?php endforeach; ?>
+
+                                                            </div>
+
+                                                        </div>
+                                                    <?php endif; ?>
+                                                <?php endif; ?>
+                                            </li>
+                                        <?php endforeach; ?>
+                                    </ul>
                                 </nav>
+
+                                <script>
+                                    document.querySelectorAll('.open-sub-mobile').forEach(item => {
+                                        item.addEventListener('click', function(event) {
+                                            event.stopPropagation(); // Ngừng sự kiện bọt nổi
+                                            const menu = document.querySelector('.sub-menu.mobile');
+                                            menu.classList.toggle('show');
+                                            menu.classList.toggle('pt-2');
+                                            this.classList.toggle('active');
+                                        });
+                                    });
+                                    // Lấy tất cả các thẻ .sub-sub-title
+                                    document.querySelectorAll('.sub-sub-title').forEach(item => {
+                                        item.addEventListener('click', function(event) {
+                                            // Ngừng sự kiện bọt nổi để tránh ảnh hưởng đến thẻ cha
+                                            event.stopPropagation();
+
+                                            // Tìm thẻ .sub-sub-wrap cha của thẻ được click
+                                            const subWrap = this.closest('.sub-sub-wrap');
+                                            // Toggle class 'show' cho thẻ .sub-sub-wrap
+                                            subWrap.classList.toggle('show');
+                                            subWrap.classList.toggle('border-neutral-50');
+                                            // thêm sub sub button
+                                            const button = this.querySelector('.sub-sub-button');
+                                            if (button) {
+                                                button.classList.toggle('active');
+                                            }
+                                        });
+                                    });
+                                </script>
 
                                 <div class="flex flex-col gap-4">
                                     <?php if ($authenticated_user) { ?>
@@ -767,10 +860,10 @@ foreach ($menu_1 as $mn) {
                                                             <!-- 1 col sub menu -->
                                                             <div class="w-full flex flex-col gap-6">
                                                                 <!-- thẻ head của sub menu         -->
-                                                                <a href="<?= $item2['url'] ?>" class="sub-menu-title flex items-center gap-2">
+                                                                <div class="sub-menu-title flex items-center gap-2">
                                                                     <figure class="w-6 h-6"><img src="<?= $item2['icon'] ?>" alt="icon"></figure>
                                                                     <p class="text-body-md-semibold"><?= $item2['title'] ?></p>
-                                                                </a>
+                                                                </div>
                                                                 <hr class="divider">
                                                                 <!-- sub menu list ra ở đây -->
 
@@ -804,15 +897,12 @@ foreach ($menu_1 as $mn) {
                 document.addEventListener("DOMContentLoaded", function() {
                     const logoutForm = document.getElementById("logoutForm");
 
-                    // Thêm sự kiện click cho toàn bộ form
                     logoutForm.addEventListener("click", function(event) {
-                        // Ngăn chặn sự kiện click lan sang các phần tử khác
                         event.preventDefault();
 
-                        // Hiển thị SweetAlert
                         Swal.fire({
                             title: 'Are you sure?',
-                            text: "You will be logged out!",
+                            text: "You will be logged out and your cart will be cleared!",
                             icon: 'warning',
                             showCancelButton: true,
                             confirmButtonColor: '#3085d6',
@@ -821,7 +911,9 @@ foreach ($menu_1 as $mn) {
                             cancelButtonText: 'Cancel'
                         }).then((result) => {
                             if (result.isConfirmed) {
-                                // Người dùng xác nhận, gửi form
+                                // Xoa storage
+                                localStorage.removeItem('cart');
+
                                 logoutForm.submit();
                             }
                         });

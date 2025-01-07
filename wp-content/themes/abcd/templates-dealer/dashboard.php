@@ -1,5 +1,11 @@
 <?php /* Template Name: Dealer-Dashboard */ ?>
 <?php
+$authenticated_dealer = validate_dealer_token();
+if (!isset($_COOKIE['dealer_token']) || !$authenticated_dealer) {
+    wp_redirect(home_url());
+    exit;
+}
+$status = $authenticated_dealer->status;
 
 $url = get_template_directory_uri();
 get_header();
@@ -22,13 +28,24 @@ get_header();
 <div class="relative">
     <div class="grid 2xl:grid-cols-7 xl:grid-cols-7 md:grid-cols-8 sm:grid-cols-1 grid-cols-1 gap-0">
     <div class="flex items-start col-span-1 2xl:col-span-1 xl:col-span-1 md:col-span-2 grid bg-white md:h-screen height-full">
-            <ul class="list-none pl-0 text-left mt-0 memubar" x-data="{ top: true }">
+            <ul class="list-none pl-0 text-left mt-0 memubar" x-data="{ top: false }">
                 <li class="flex items-center pt-4 pb-4 pl-6 item-f dashboard checkout-menu-active">
                 <a class="flex items-center no-underline" href="<?= home_url() ?>/dealer-dashboard"><img class="mr-3 w-6 active" src="<?= $url ?>/assets/dealer/img/cuida_ac.png" alt=""><span class="menu-item">Dashboard</span></a>
                 </li>
                 <li class="flex items-center pt-4 pb-4 pl-6 item-f my-order">
                 <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/dealer-order-info"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/cart.png" alt=""><img class="mr-3 w-6 active hidden" src="<?= $url ?>/assets/dealer/img/cart_ac.png " alt=""><span class="menu-item">My orders</span></a>
                 </li>
+                <?php if($status == 2): ?>
+                    <li class="flex items-center pt-4 pb-4 pl-6 item-f management">
+                    <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/dealer-affiliate-order"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/tabler_shopping-bag-discount.png" alt=""><img class="mr-3 w-6 active hidden" src="<?= $url ?>/assets/dealer/img/tabler_shopping-bag-discount_ac.png" alt=""><span class="menu-item">Affiliate orders</span></a>
+                    </li>
+                    <li class="flex items-center pt-4 pb-4 pl-6 item-f management">
+                    <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/dealer-affiliate-customization"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/material-symbols_link.png" alt=""><img class="mr-3 w-6 hidden active" src="<?= $url ?>/assets/dealer/img/material-symbols_link_ac.png" alt=""><span class="menu-item">Affiliate link<br>customization</span></a>
+                    </li>
+                    <li class="flex items-center pt-4 pb-4 pl-6 item-f management">
+                    <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/point-management"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/reward.png" alt=""><img class="mr-3 w-6 hidden active" src="<?= $url ?>/assets/dealer/img/reward_ac.png" alt=""><span class="menu-item">Point management</span></a>
+                    </li>
+                <?php endif; ?>
                 <li class="pt-4 pb-4 pl-6 item-f account" >
                 <div class="flex items-center no-underline w-full" href="" x-on:click="top = ! top"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/circle.png" alt=""><img class="mr-3 w-6 hidden active" src="<?= $url ?>/assets/dealer/img/circle_ac.png" alt="">
                     <span class="menu-item cursor-pointer">Account<br>information</span>
@@ -45,6 +62,11 @@ get_header();
                     <li class="mt-2">
                         <a class="no-underline text-sm" href="<?= home_url() ?>/dealer-business-informmation">Business information</a>
                     </li>
+                    <?php if($status == 2): ?>
+                        <li class="mt-2">
+                            <a class="no-underline text-sm" href="<?= home_url() ?>/dealer-bank-informmation">Bank account information</a>
+                        </li>
+                    <?php endif; ?>
                 </ul>
                 </li>
             </ul>

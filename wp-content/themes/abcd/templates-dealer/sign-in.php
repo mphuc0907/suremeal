@@ -140,6 +140,8 @@ get_header();
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
+                    // Xoa storage
+                    localStorage.removeItem('cart');
                     // Chuyển hướng đến trang chủ
                     window.location.href = data.data.redirect;
                 } else {
@@ -242,6 +244,8 @@ function sendFacebookLoginRequest(userData) {
     .then(data => {
 
         if (data.success) {
+            // Xoa storage
+            localStorage.removeItem('cart');
             // Redirect or show success message
             window.location.href = '<?= home_url() ?>';
         } else {

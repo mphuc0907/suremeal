@@ -120,6 +120,7 @@ $lang = ICL_LANGUAGE_CODE;
     <?php get_footer() ?>
     <!-- script offer js -->
     <script>
+        
         $('.btn-cart-purchase').click(function() {
             var orderSelectedProduct = $('.cart-checkbox:checked').map(function() {
                 return $(this).attr('data-product-id');

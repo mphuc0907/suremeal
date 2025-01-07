@@ -366,6 +366,8 @@ function sendFacebookLoginRequest(userData) {
     .then(data => {
 
         if (data.success) {
+            // Xoa storage
+            localStorage.removeItem('cart');
             // Redirect or show success message
             window.location.href = '<?= home_url() ?>';
         } else {

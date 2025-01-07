@@ -38,7 +38,7 @@ $totalOrders = $wpdb->get_var("SELECT COUNT(*) FROM wp_orders WHERE id_dealer = 
 
 $myrows = $wpdb->get_results("SELECT * FROM wp_orders WHERE id_dealer = '{$idCustomer}' ORDER BY time_order DESC");
 
-$discountList = $wpdb->get_results("SELECT * FROM wp_discount_dealer WHERE id_dealer = '{$idCustomer}' ORDER BY id DESC");
+$discountList = $wpdb->get_results("SELECT * FROM wp_discount_dealer WHERE id_dealer = '{$idCustomer}' ORDER BY id ASC");
 
 ?>
 
@@ -475,12 +475,13 @@ $discountList = $wpdb->get_results("SELECT * FROM wp_discount_dealer WHERE id_de
                         <th>Product</th>
                         <th>Type discount</th>
                         <th>Discount</th>
+                        <th>Action</th>
                     </tr>
                     </thead>
 
                     <?php
                     $i = 0;
-                    foreach ($discountList as $item) {
+                    foreach ($discountList as $key => $item) {
                         $i++;
                         $post = get_post($item->product); 
                         $postTitle = $post->post_title;
@@ -499,8 +500,11 @@ $discountList = $wpdb->get_results("SELECT * FROM wp_discount_dealer WHERE id_de
                                 <?php if($item->discount_type == '0'): ?>
                                     <?= $item->discount_amount ?>
                                 <?php elseif($item->discount_type == '1'): ?>
-                                    <?= intval($item->discount_amount) ?> %
+                                    <?= $item->discount_amount ?> %
                                 <?php endif; ?>
+                            </td>
+                            <td>
+                                <a href="javascript:void(0)" onclick="deleteDiscount(<?= $item->id ?>)" class="delete-action" style="color: red;">Delete</a>
                             </td>
                         </tr>
                     <?php } ?>
@@ -873,4 +877,59 @@ document.querySelectorAll('.remove-form-group').forEach(button => {
 
 // Chạy lần đầu để set up initial state
 updateProductSelections();
+
+function deleteDiscount(id) {
+    Swal.fire({
+        title: 'Are you sure?',
+        text: "You won't be able to revert this!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show loading animation
+            document.querySelector('.divgif').style.display = 'block';
+            
+            // Send delete request
+            jQuery.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'delete_discount',
+                    discount_id: id,
+                    security: ajax_object.nonce
+                },
+                success: function(response) {
+                    document.querySelector('.divgif').style.display = 'none';
+                    
+                    if (response.success) {
+                        Swal.fire(
+                            'Deleted!',
+                            'Discount has been deleted.',
+                            'success'
+                        ).then(() => {
+                            window.location.reload();
+                        });
+                    } else {
+                        Swal.fire(
+                            'Error!',
+                            'Something went wrong.',
+                            'error'
+                        );
+                    }
+                },
+                error: function() {
+                    document.querySelector('.divgif').style.display = 'none';
+                    Swal.fire(
+                        'Error!',
+                        'Something went wrong.',
+                        'error'
+                    );
+                }
+            });
+        }
+    });
+}
 </script>

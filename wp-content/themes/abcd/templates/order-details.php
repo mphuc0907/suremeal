@@ -1,5 +1,6 @@
 <?php /* Template Name: Order-detail */ ?>
 <?php
+$url = get_template_directory_uri();
 get_header();
 
 global $wpdb;
@@ -111,7 +112,7 @@ if ($status == 1) {
                                             <p class="text-body-md-medium text-neutral-500 order_code"><?= $code ?></p>
                                             <input type="text" value="<?= $code ?>" id="myInput<?= $code ?>" style="display: none">
                                             <button class="button button-trans p-0" onclick="myFunction('myInput<?= $code ?>')">
-                                                <figure class="w-5 h-5"><img src="../html/assets/image/icon/duplicate.svg"
+                                                <figure class="w-5 h-5"><img src="<?= $url ?>/assets/image/icon/duplicate.svg"
                                                         alt="icon">
                                                 </figure>
                                             </button>
@@ -158,7 +159,7 @@ if ($status == 1) {
                                             <div class="dot"></div>
                                             <div class="content">
                                                 <figure class="w-8 h-8"><img
-                                                        src="../html/assets/image/order/note-book-primary.svg"
+                                                        src="<?= $url ?>/assets/image/order/note-book-primary.svg"
                                                         alt="icon">
                                                 </figure>
                                                 <p>Order Placed</p>
@@ -170,7 +171,7 @@ if ($status == 1) {
                                             <div class="dot"></div>
                                             <div class="content">
                                                 <figure class="w-8 h-8"><img
-                                                        src="../html/assets/image/order/pakage.svg" alt="icon">
+                                                        src="<?= $url ?>/assets/image/order/pakage.svg" alt="icon">
                                                 </figure>
                                                 <p>Packaging</p>
                                             </div>
@@ -180,7 +181,7 @@ if ($status == 1) {
                                         <div class="progress-order-item  <?php if ($status_transport > 3): ?> active<?php elseif ($status_transport == 3):  ?>processing  <?php endif; ?>">
                                             <div class="dot"></div>
                                             <div class="content">
-                                                <figure class="w-8 h-8"><img src="../html/assets/image/order/truck.svg"
+                                                <figure class="w-8 h-8"><img src="<?= $url ?>/assets/image/order/truck.svg"
                                                         alt="icon">
                                                 </figure>
                                                 <p>On The Road</p>
@@ -192,7 +193,7 @@ if ($status == 1) {
                                             <div class="dot"></div>
                                             <div class="content">
                                                 <figure class="w-8 h-8"><img
-                                                        src="../html/assets/image/order/deliver.svg" alt="icon">
+                                                        src="<?= $url ?>/assets/image/order/deliver.svg" alt="icon">
                                                 </figure>
                                                 <p>Delivered</p>
                                             </div>
@@ -204,7 +205,7 @@ if ($status == 1) {
                             <div class="w-full flex flex-col lg:flex-row gap-6 py-4 px-8">
                                 <div class="w-full flex flex-col gap-4">
                                     <div class="flex items-center gap-2">
-                                        <figure class="w-6 h-6"><img src="../html/assets/image/icon/user.svg"
+                                        <figure class="w-6 h-6"><img src="<?= $url ?>/assets/image/icon/user.svg"
                                                 alt="icon">
                                         </figure>
                                         <p class="text-body-md-medium text-gray-8">Recipient information</p>
@@ -221,14 +222,14 @@ if ($status == 1) {
                                 <div class=" w-full h-[1px] lg:w-[1px] lg:h-[68px] bg-neutral-300"></div>
                                 <div class="w-full flex flex-col gap-4">
                                     <div class="flex items-center gap-2">
-                                        <figure class="w-6 h-6"><img src="../html/assets/image/icon/card.svg"
+                                        <figure class="w-6 h-6"><img src="<?= $url ?>/assets/image/icon/card.svg"
                                                 alt="icon">
                                         </figure>
                                         <p class="text-body-md-medium text-gray-8">Payment method</p>
                                     </div>
                                     <div class="flex items-center gap-3">
                                         <figure class="w-[46px] h-[32px]"><img
-                                                src="../html/assets/image/badge-visa.svg" alt="visa"></figure>
+                                                src="<?= $url ?>/assets/image/badge-visa.svg" alt="visa"></figure>
                                         <h2 class="text-body-sm-medium text-gray-9"> ***4242 | Expires 12/34</h2>
                                     </div>
                                 </div>

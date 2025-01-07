@@ -482,7 +482,7 @@ $url = get_template_directory_uri();
                         <div class="range mt-20">
                             <div class="range-slider">
                                 <?php if (isset($_GET['max_price']) && isset($_GET['min_price'])): ?>
-                                    <span class="range-selected" style="right: <?= round((($max_price - $_GET['max_price']) / $max_price) * 100, 2) ?>%;left: <?= round((($_GET['min_price'] - $min_price) / $max_price) * 100, 2) ?>%;"></span>
+                                    <span class="range-selected" style="right: <?= round((($max_price - $_GET['max_price']) / $max_price) * 100, 2) ?>%;left: <?= round(($_GET['min_price'] / $max_price) * 100, 2) ?>%;"></span>
                                 <?php else: ?>
                                     <span class="range-selected" style="left: <?= round(($min_price / $max_price) * 100, 2) ?>%;"></span>
                                 <?php endif ?>
