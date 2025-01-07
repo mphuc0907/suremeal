@@ -91,12 +91,14 @@ get_header();
     <?php endif ?>
 
     <div class="container">
+        <?php if (!empty($flashSaleTodayProducts) || !empty($exclusiveFlashSaleProducts)) :?>
         <div class="rounded-3xl bg-white mt-20 mb-8">
             <div class="w-full flex flex-col md:flex-row">
                 <span class="promotions-text tab-promotion-item text-heading-h5" data-tabPromotion="onSale"><?php pll_e('On sale now') ?></span>
                 <span class="promotions-text tab-promotion-item text-heading-h5" data-tabPromotion="Exclusive"><?php pll_e('Exclusive promotion') ?></span>
             </div>
             <div class="p-8 flex flex-col items-center tab-promotion active" data-tabPromotion="onSale">
+                <?php if ($onSaleCountdownEnabled) :?>
                 <div class="p-2 rounded-full md:bg-neutral-100 flex flex-col md:flex-row gap-4">
                     <div class="countdown-container py-2 px-3 sm:px-6 rounded-full bg-primary flex items-center gap-2 sm:gap-4">
                         <span class="text-heading-h7 text-white"><?php pll_e('Ending in:') ?></span>
@@ -112,6 +114,8 @@ get_header();
                         <span class="min-h-[34px] flex items-center text-heading-h7 text-neutral-500"><?php pll_e('Tomorrow') ?> <?= $flashSaleTomorrowStartTime ?> - <?= $flashSaleTomorrowEndTime ?></span>
                     </div>
                 </div>
+
+                <?php endif;?>
                 <div data-aos="fade-up" data-aos-duration="1500" class="mt-14">
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         <?php
@@ -319,7 +323,7 @@ get_header();
                 <?php endif ?>
             </div>
         </div>
-
+        <?php endif;?>
 
         <div class="my-8">
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">

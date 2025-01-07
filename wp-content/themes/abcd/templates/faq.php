@@ -60,8 +60,8 @@ get_header();
             <div class="mt-20">
                 <div class="flex flex-col lg:flex-row w-full gap-6 justify-between">
                     <div class="flex flex-wrap gap-3">
-                        <div class="text-body-md-medium tab-item active" data-tab="general"><?php pll_e('General') ?></div>
-                        <div class="text-body-md-medium tab-item" data-tab="health"><?php pll_e('Health') ?></div>
+                        <div class="text-body-md-medium tab-item home active" data-tab="general"><?php pll_e('General') ?></div>
+                        <div class="text-body-md-medium tab-item home" data-tab="health"><?php pll_e('Health') ?></div>
                     </div>
                     <form id="faq-search-form" class="flex items-center xl:w-[200px] 2xl:w-[386px]">
                         <input type="text" name="search_term"

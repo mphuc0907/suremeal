@@ -560,6 +560,11 @@ function submitOrder() {
     if (isset($_COOKIE['user_token']) && $authenticated_user) {
         $id_user = $authenticated_user->ID;
     }
+    $id_dealer = '';
+    $authenticated_dealer = validate_dealer_token();
+    if (isset($_COOKIE['dealer_token']) && $authenticated_dealer) {
+        $id_dealer = $authenticated_dealer->ID;
+    }
 
     $state_province = "";
     if (!empty($state)) {
@@ -570,6 +575,7 @@ function submitOrder() {
 
     $data = [
         'id_user' => $id_user,
+        'id_dealer' => $id_dealer,
         'order_code' => $order_code,
         'address1' => $address1,
         'discount_price' => $discount,

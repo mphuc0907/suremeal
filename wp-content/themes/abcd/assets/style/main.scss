@@ -442,39 +442,54 @@ select {
   pointer-events: none;
   &-title {
     color: #1f2237;
-    &:hover {
-      color: #ed1b24;
-    }
+    // &:hover {
+    //   color: #ed1b24;
+    // }
   }
   &-hover {
     color: #1f2237;
     p {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
+      gap: 10px;
       &::before {
         content: "";
         display: block;
-        min-width: 4px;
-        min-height: 4px;
-        margin: 10px 8px;
+        min-width: 20px;
+        min-height: 20px;
+        background: url(../../assets/image/icon/circle-check-20.svg);
+        background-repeat: no-repeat;
+        background-size: cover;
+        // margin: 10px 8px;
         border-radius: 100%;
-        background: #1f2237;
       }
     }
     &:hover {
       color: #0e74bc;
       p {
-        &::before {
-          background: #0e74bc;
-        }
+        // &::before {
+        //   background: #0e74bc;
+        // }
       }
     }
   }
-  &-mobile {
+
+  @media (max-width: 991px) {
+    position: unset;
+    transform: unset;
+    width: 100%;
+    pointer-events: unset;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: unset;
+    opacity: 1;
+    visibility: visible;
+  }
+  &.mobile {
     height: 0;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.6s ease;
+    transition: all 0.6s ease-in-out;
     &.show {
       height: fit-content;
       opacity: 1;
@@ -483,20 +498,45 @@ select {
     }
   }
 }
-
 .sub-wrap {
   // position: relative;
-  &:hover {
-    .sub-menu {
-      transition: all 0.6s ease;
-      opacity: 1;
-      visibility: visible;
-      pointer-events: unset;
-      &:hover {
-        transition: all 0.6s ease;
+  @media (min-width: 992px) {
+    &:hover {
+      .sub-menu {
+        transition: all 0.6s ease-in-out;
         opacity: 1;
         visibility: visible;
         pointer-events: unset;
+        &:hover {
+          transition: all 0.6s ease-in-out;
+          opacity: 1;
+          visibility: visible;
+          pointer-events: unset;
+        }
+      }
+    }
+  }
+}
+
+.sub-sub {
+  &-wrap {
+    max-height: 30px;
+    overflow: hidden;
+    transition: all 0.6s ease-in-out;
+    border-radius: 8px;
+    .sub-sub-title {
+      p {
+        color: #1f2237;
+      }
+    }
+    &.show {
+      max-height: 1000px;
+      pointer-events: unset;
+      transition: all 0.6s ease-in-out;
+      .sub-sub-title {
+        p {
+          color: #0e74bc;
+        }
       }
     }
   }
@@ -1608,6 +1648,15 @@ hr {
   border-radius: 8px;
   background: #e5e7eb;
   cursor: pointer;
+  &.home {
+    background: #f1f9fe;
+    color: #37514b;
+  }
+  &:hover {
+    font-weight: 600;
+    background: #fff;
+    color: #0e74bc;
+  }
   &.active {
     font-weight: 600;
     background: #fff;

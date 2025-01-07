@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homepage</title>
+    <!-- taildwind css import -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../html/assets/js/tailwind.config.js"></script>
+    <!-- custom css -->
+    <link rel="stylesheet" href="../html/assets/style/main.css" />
+    <!-- font popin import -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Raleway:ital,wght@0,100..900;1,100..900&display=swap"
+        rel="stylesheet">
+
+    <!-- swiper -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <!-- jquery -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <!-- fancy box -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fancybox/3.5.7/jquery.fancybox.css"
+        integrity="sha512-nNlU0WK2QfKsuEmdcTwkeh+lhGs6uyOxuUs+n+0oXSYDok5qy0EI0lt01ZynHq6+p/tbgpZ7P+yUb+r71wqdXg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+
+<body>
+
+    <header>
+        <div class="header">
+            <!-- header pc -->
+            <div class="hidden lg:block fixed top-0 w-full h-[128px] z-[5]">
+                <!-- first row -->
+                <div class="bg-white">
+                    <div class="container flex items-center justify-center xl:gap-5 2xl:gap-[40px] 3xl:gap-[80px] py-2">
+                        <a href="/">
+                            <figure class="w-[128px]"><img src="../html/assets/image/head-logo.svg" alt="logo"></figure>
+                        </a>
+                        <input type="text" class="home-search xl:max-w-[200px] 2xl:max-w-[325px]"
+                            placeholder="Search everything">
+                        <div class="flex items-center xl:gap-4 2xl:gap-8">
+                            <select name="" id="" class="input-trans px-1">
+                                <option value="1">English</option>
+                                <option value="1">VN</option>
+                            </select>
+                            <div class="flex items-center gap-[14px]">
+                                <figure class="w-6 h-6"><img src="../html/assets/image/icon/user-round.svg" alt="icon">
+                                </figure>
+                                <div class="flex-col">
+                                    <p class="text-body-sm-regular text-neutral-500">Sign in</p>
+                                    <p class="text-body-sm-semibold text-neutrral-900">For Sale Partners</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-[14px]">
+                                <figure class="w-6 h-6"><img src="../html/assets/image/icon/user-round.svg" alt="icon">
+                                </figure>
+                                <div class="flex-col">
+                                    <p class="text-body-sm-regular text-neutral-500">Sign in</p>
+                                    <p class="text-body-sm-semibold text-neutrral-900">For Dealer</p>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-[14px]">
+                                <figure class="relative w-6 h-6">
+                                    <img src="../html/assets/image/icon/cart-shopping.svg" alt="icon">
+                                    <p
+                                        class="w-[14px] h-[14px]  rounded-full bg-primary absolute top-[-4px] right-[-4px] flex items-center justify-center text-body-sm-semibold text-[8px] text-white">
+                                        1</p>
+                                </figure>
+                                <div class="flex-col">
+                                    <p class="text-body-sm-regular text-neutral-500">Cart</p>
+                                    <p class="text-body-sm-semibold text-neutrral-900">$0.00</p>
+                                </div>
+                            </div>
+                            <a href="#" class="button bg-primary p-10-24 text-body-md-semibold">Sign in</a>
+                        </div>
+                    </div>
+                </div>
+                <!-- second row -->
+                <div class="bg-secondary shadow-1">
+                    <div class="container flex items-center justify-center">
+                        <nav>
+                            <ul class="flex items-center gap-2 2xl:gap-4">
+                                <li class="px-6 py-3 hover:bg-white hover:text-secondary text-body-md-bold text-white">
+                                    <a href="#">Home</a>
+                                </li>
+                                <li class="px-6 py-3 hover:bg-white hover:text-secondary text-body-md-bold text-white">
+                                    <a href="#">Products</a>
+                                </li>
+                                <li class="px-6 py-3 hover:bg-white hover:text-secondary text-body-md-bold text-white">
+                                    <a href="#">Promotions</a>
+                                </li>
+                                <li class="px-6 py-3 hover:bg-white hover:text-secondary text-body-md-bold text-white">
+                                    <a href="#">Find A Dealer</a>
+                                </li>
+                                <li class="px-6 py-3 hover:bg-white hover:text-secondary text-body-md-bold text-white">
+                                    <a href="#">Private Label</a>
+                                </li>
+                                <li class="px-6 py-3 hover:bg-white hover:text-secondary text-body-md-bold text-white">
+                                    <a href="#">Blog</a>
+                                </li>
+                                <li class="px-6 py-3 hover:bg-white hover:text-secondary text-body-md-bold text-white">
+                                    <a href="#">About Us</a>
+                                </li>
+                                <li class="px-6 py-3 hover:bg-white hover:text-secondary text-body-md-bold text-white">
+                                    <a href="#">FAQs</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+            <!-- header-mobile -->
+            <div class="flex lg:hidden mobile-header justify-between container py-5">
+                <a href="/">
+                    <div class="logo">
+                        <figure>
+                            <img src="../html/assets/image/head-logo.svg" alt="logo">
+                        </figure>
+                    </div>
+                </a>
+
+                <button class="breadcrumb-button">
+                    <figure>
+                        <img src="../html/assets/image/icon/3bar.svg" alt="">
+                    </figure>
+                </button>
+
+                <div
+                    class="breadcrumb-header hidden fixed w-[70vw] max-w-[350px] h-[100vh] top-0 right-0 z-[5] transform transition-transform duration-300 ease-in-out translate-x-full">
+                    <div class=" flex flex-col gap-6 bg-secondary w-full h-full px-6">
+                        <div class="flex items-center justify-between">
+                            <a href="/">
+                                <div class="logo">
+                                    <figure>
+                                        <img src="../html/assets/image/head-logo.svg" alt="logo">
+                                    </figure>
+                                </div>
+                            </a>
+                            <button class="breadcrumb-close">
+                                <figure class="w-8 h-8">
+                                    <img src="../html/assets/image/icon/close.svg" alt="">
+                                </figure>
+                            </button>
+                        </div>
+
+                        <div class="flex flex-col items-center gap-6 ">
+                            <input type="text" class="home-search xl:max-w-[200px] 2xl:max-w-[325px]"
+                                placeholder="Search everything">
+                            <a href="#" class="button bg-primary p-10-24 text-body-md-semibold">Sign in</a>
+
+                        </div>
+                        <nav>
+                            <ul class="flex flex-col gap-2 2xl:gap-4">
+                                <li class="px-6 py-3 hover:bg-white hover:text-secondary text-body-md-bold text-white">
+                                    <a href="#">Home</a>
+                                </li>
+                                <li class="px-6 py-3 hover:bg-white hover:text-secondary text-body-md-bold text-white">
+                                    <a href="#">Products</a>
+                                </li>
+                                <li class="px-6 py-3 hover:bg-white hover:text-secondary text-body-md-bold text-white">
+                                    <a href="#">Promotions</a>
+                                </li>
+                                <li class="px-6 py-3 hover:bg-white hover:text-secondary text-body-md-bold text-white">
+                                    <a href="#">Find A Dealer</a>
+                                </li>
+                                <li class="px-6 py-3 hover:bg-white hover:text-secondary text-body-md-bold text-white">
+                                    <a href="#">Private Label</a>
+                                </li>
+                                <li class="px-6 py-3 hover:bg-white hover:text-secondary text-body-md-bold text-white">
+                                    <a href="#">Blog</a>
+                                </li>
+                                <li class="px-6 py-3 hover:bg-white hover:text-secondary text-body-md-bold text-white">
+                                    <a href="#">About Us</a>
+                                </li>
+                                <li class="px-6 py-3 hover:bg-white hover:text-secondary text-body-md-bold text-white">
+                                    <a href="#">FAQs</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+
+
+            </div>
+        </div>
+        <div class="h-[128px] hidden lg:block"></div>
+    </header>
+
+    <main class="bg-[#EEF0F6]">
+        <section class="pt-6 pb-10">
+            <div class="container">
+                <nav class="breadcrumb text-body-md-medium text-gray-8" aria-label="breadcrumb">
+                    <!-- Sử dụng schema.org để định nghĩa breadcrumb list -->
+                    <ol class="flex flex-wrap gap-3 items-center" itemscope
+                        itemtype="https://schema.org/BreadcrumbList">
+
+                        <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+                            <a href="#" class="text-secondary hover:text-primary" itemprop="item">
+                                <span itemprop="name">Home</span>
+                            </a>
+                            <meta itemprop="position" content="1" />
+                        </li>
+                        <span>/</span>
+                        <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem"
+                            aria-current="page">
+                            <span itemprop="name">Products</span>
+                            <meta itemprop="position" content="4" />
+                        </li>
+
+                    </ol>
+                </nav>
+                <h1 class="text-heading-h2 tex-gray-9">Products</h1>
+            </div>
+        </section>
+
+        <!-- product swiper -->
+        <section>
+            <div class="container">
+                <!-- Slider main container -->
+                <div id="product-swiper" class="swiper swiper-product">
+                    <!-- Additional required wrapper -->
+                    <div class="swiper-wrapper">
+                        <!-- Slides -->
+                        <div class="swiper-slide">
+                            <div class="rounded-[1.25rem] oveflow-hidden">
+                                <figure>
+                                    <img src="../html/assets/image/product/banner.png" class="" alt="product-item">
+                            </div>
+                        </div>
+                        <!-- Slides -->
+                        <div class="swiper-slide">
+                            <div class="rounded-[1.25rem] oveflow-hidden">
+                                <figure>
+                                    <img src="../html/assets/image/product/banner.png" class="" alt="product-item">
+                            </div>
+                        </div>
+                        <!-- Slides -->
+                        <div class="swiper-slide">
+                            <div class="rounded-[1.25rem] oveflow-hidden">
+                                <figure>
+                                    <img src="../html/assets/image/product/banner.png" class="" alt="product-item">
+                            </div>
+                        </div>
+                        <!-- Slides -->
+                        <div class="swiper-slide">
+                            <div class="rounded-[1.25rem] oveflow-hidden">
+                                <figure>
+                                    <img src="../html/assets/image/product/banner.png" class="" alt="product-item">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- If we need pagination -->
+                    <div class="swiper-pagination"></div>
+                </div>
+            </div>
+        </section>
+        <style>
+            .product-hover {
+                background: #fff;
+            }
+
+            .product-hover:hover {
+                background: linear-gradient(50deg, rgba(255, 255, 255, 0.00) -16.45%, rgba(0, 146, 249, 0.20) 100.19%), #FFF;
+            }
+        </style>
+        <section class="pt-8">
+            <div class="container">
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                    <div class="product-hover flex flex-col gap-6 p-6 items-center justify-center bg-white rounded-xl">
+                        <figure class="w-[4.25rem] h-[4.25rem]"><img src="../html/assets/image/product/wellness.svg"
+                                alt="icon">
+                        </figure>
+                        <div class="flex flex-col items-center gap-1">
+                            <h2 class="text-heading-h6 text-gray-9 text-center">Nutrition & Weight</h2>
+                            <p class="text-body-md-regular text-neutral-500">105 products</p>
+                        </div>
+                    </div>
+                    <div class="product-hover flex flex-col gap-6 p-6 items-center justify-center bg-white rounded-xl">
+                        <figure class="w-[4.25rem] h-[4.25rem]"><img src="../html/assets/image/product/hand-star.svg"
+                                alt="icon">
+                        </figure>
+                        <div class="flex flex-col items-center gap-1">
+                            <h2 class="text-heading-h6 text-gray-9 text-center">Beauty & Skin health</h2>
+                            <p class="text-body-md-regular text-neutral-500">105 products</p>
+                        </div>
+                    </div>
+                    <div class="product-hover flex flex-col gap-6 p-6 items-center justify-center bg-white rounded-xl">
+                        <figure class="w-[4.25rem] h-[4.25rem]"><img src="../html/assets/image/product/jar-pill.svg"
+                                alt="icon">
+                        </figure>
+                        <div class="flex flex-col items-center gap-1">
+                            <h2 class="text-heading-h6 text-gray-9 text-center">Lifestyle & Recovery</h2>
+                            <p class="text-body-md-regular text-neutral-500">105 products</p>
+                        </div>
+                    </div>
+                    <div class="product-hover flex flex-col gap-6 p-6 items-center justify-center bg-white rounded-xl">
+                        <figure class="w-[4.25rem] h-[4.25rem]"><img src="../html/assets/image/product/fire.svg"
+                                alt="icon">
+                        </figure>
+                        <div class="flex flex-col items-center gap-1">
+                            <h2 class="text-heading-h6 text-gray-9 text-center">Advanced Wellness</h2>
+                            <p class="text-body-md-regular text-neutral-500">105 products</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <style>
+            .collapse-title {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .collapse-item {
+                margin-top: 1rem;
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+                max-height: 125rem;
+                transition: all 0.5s ease;
+            }
+
+            .collapse-item.collapsed {
+                max-height: 0;
+                overflow: hidden;
+                transition: all 0.5s ease;
+            }
+
+            .check-list {
+                display: flex;
+                flex-direction: column;
+                gap: .75rem;
+                max-height: 125rem;
+                transition: all 0.5s ease;
+            }
+
+            .check-list.collapsed {
+                max-height: 6.25rem;
+                overflow: hidden;
+                transition: all 0.5s ease;
+            }
+
+            .collapse-check-list {
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                cursor: pointer;
+            }
+
+            .collapse-button,
+            .collapse-check-button {
+                transition: all 0.5s ease;
+            }
+        </style>
+        <section class="pt-10 lg:pt-20">
+            <div class="container flex flex-col lg:flex-row gap-6">
+                <div
+                    class="flex flex-wrap lg:flex-col gap-6 p-6 rounded-xl bg-white w-full lg:max-w-[250px] xl:max-w-[322px] h-fit">
+                    <div class="flex items-center gap-3">
+                        <figure class="w-[2.25rem] h-[2.25rem]"><img src="../html/assets/image/icon/filter.svg"
+                                alt="icon">
+                        </figure>
+                        <p class="text-heading-h6 text-gray-8">Filter</p>
+                    </div>
+                    <hr class="divider">
+                    <!-- collapse item 1 -->
+                    <div class="w-full">
+                        <div class="collapse-title">
+                            <p class="text-body-xl-medium text-gray-8">Target user</p>
+                            <div class="collapse-button">
+                                <figure class="w-6 h-6"><img src="../html/assets/image/icon/chev-up-24.svg" alt="icon">
+                                </figure>
+                            </div>
+                        </div>
+                        <div class="collapse-item">
+                            <input type="text" class="filter-search" placeholder="Search by name">
+                            <div class="check-list collapsed">
+                                <label class="custom-checkbox">
+                                    <div class="checkbox-container">
+                                        <input type="checkbox">
+                                        <span class="checkmark"></span>
+                                    </div>
+                                    <p class="text-body-md-regular text-gray-8">All</p>
+                                </label>
+                                <label class="custom-checkbox">
+                                    <div class="checkbox-container">
+                                        <input type="checkbox">
+                                        <span class="checkmark"></span>
+                                    </div>
+                                    <p class="text-body-md-regular text-gray-8">Children</p>
+                                </label>
+                                <label class="custom-checkbox">
+                                    <div class="checkbox-container">
+                                        <input type="checkbox">
+                                        <span class="checkmark"></span>
+                                    </div>
+                                    <p class="text-body-md-regular text-gray-8">Adults</p>
+                                </label>
+                                <label class="custom-checkbox">
+                                    <div class="checkbox-container">
+                                        <input type="checkbox">
+                                        <span class="checkmark"></span>
+                                    </div>
+                                    <p class="text-body-md-regular text-gray-8">More item 1</p>
+                                </label>
+                            </div>
+
+                            <div class="collapse-check-list">
+                                <div class="collapse-check-button">
+                                    <figure class="w-5 h-5"><img src="../html/assets/image/icon/double-chev-down-20.svg"
+                                            alt="icon"></figure>
+                                </div>
+                                <p class="more text-body-sm-regular text-gray-9">View more</p>
+                                <p class="less hidden text-body-sm-regular text-gray-9">View less</p>
+                            </div>
+
+                        </div>
+                    </div>
+                    <hr class="divider">
+                    <!-- collapse item 2 -->
+                    <div class="w-full">
+                        <div class="collapse-title">
+                            <p class="text-body-xl-medium text-gray-8">Price</p>
+                            <div class="collapse-button">
+                                <figure class="w-6 h-6"><img src="../html/assets/image/icon/chev-up-24.svg" alt="icon">
+                                </figure>
+                            </div>
+                        </div>
+                        <div class="collapse-item">
+                            <!-- ranger pick -->
+                            <div class="range mt-20">
+                                <div class="range-slider">
+                                    <span class="range-selected"></span>
+                                    <span class="range-tooltip" id="tooltip-min">300</span>
+                                    <span class="range-tooltip" id="tooltip-max">700</span>
+                                </div>
+                                <div class="range-input">
+                                    <input type="range" class="min" min="0" max="1000" value="300" step="10">
+                                    <input type="range" class="max" min="0" max="1000" value="700" step="10">
+                                </div>
+                                <div class="range-price mt-4 flex items-center gap-3">
+                                    <div class="relative" style="width: calc(50% - 40px / 2)">
+                                        <input type="number" name="min" value="300" placeholder="From">
+                                        <p class="text-input">$</p>
+                                    </div>
+                                    -
+                                    <div class="relative" style="width: calc(50% - 40px / 2)">
+                                        <input type="number" name="max" value="700" placeholder="to">
+                                        <p class="text-input">$</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <p class="text-body-sm-regular text-red-1">Please fill in the appropriate price range</p>
+                            <button class="w-full button bg-primary text-body-md-semibold text-white">Apply</button>
+                        </div>
+                    </div>
+                    <hr class="divider">
+                    <!-- collapse item 3 -->
+                    <div class="w-full">
+                        <div class="collapse-title">
+                            <p class="text-body-xl-medium text-gray-8">Brand</p>
+                            <div class="collapse-button">
+                                <figure class="w-6 h-6"><img src="../html/assets/image/icon/chev-up-24.svg" alt="icon">
+                                </figure>
+                            </div>
+                        </div>
+                        <div class="collapse-item">
+                            <div class="check-list collapsed">
+                                <label class="custom-checkbox">
+                                    <div class="checkbox-container">
+                                        <input type="checkbox">
+                                        <span class="checkmark"></span>
+                                    </div>
+                                    <p class="text-body-md-regular text-gray-8">All</p>
+                                </label>
+                                <label class="custom-checkbox">
+                                    <div class="checkbox-container">
+                                        <input type="checkbox">
+                                        <span class="checkmark"></span>
+                                    </div>
+                                    <p class="text-body-md-regular text-gray-8">Supplement Depo</p>
+                                </label>
+                                <label class="custom-checkbox">
+                                    <div class="checkbox-container">
+                                        <input type="checkbox">
+                                        <span class="checkmark"></span>
+                                    </div>
+                                    <p class="text-body-md-regular text-gray-8">SureMeal</p>
+                                </label>
+                                <label class="custom-checkbox">
+                                    <div class="checkbox-container">
+                                        <input type="checkbox">
+                                        <span class="checkmark"></span>
+                                    </div>
+                                    <p class="text-body-md-regular text-gray-8">More item 1</p>
+                                </label>
+                            </div>
+
+                            <div class="collapse-check-list">
+                                <div class="collapse-check-button">
+                                    <figure class="w-5 h-5"><img src="../html/assets/image/icon/double-chev-down-20.svg"
+                                            alt="icon"></figure>
+                                </div>
+                                <p class="more text-body-sm-regular text-gray-9">View more</p>
+                                <p class="less hidden text-body-sm-regular text-gray-9">View less</p>
+                            </div>
+
+                        </div>
+                    </div>
+                    <hr class="divider">
+                    <!-- collapse item 4 -->
+                    <div class="w-full">
+                        <div class="collapse-title">
+                            <p class="text-body-xl-medium text-gray-8">Needs</p>
+                            <div class="collapse-button">
+                                <figure class="w-6 h-6"><img src="../html/assets/image/icon/chev-up-24.svg" alt="icon">
+                                </figure>
+                            </div>
+                        </div>
+                        <div class="collapse-item">
+                            <div class="check-list collapsed">
+                                <label class="custom-checkbox">
+                                    <div class="checkbox-container">
+                                        <input type="checkbox">
+                                        <span class="checkmark"></span>
+                                    </div>
+                                    <p class="text-body-md-regular text-gray-8">All</p>
+                                </label>
+                                <label class="custom-checkbox">
+                                    <div class="checkbox-container">
+                                        <input type="checkbox">
+                                        <span class="checkmark"></span>
+                                    </div>
+                                    <p class="text-body-md-regular text-gray-8">Weigh management Depo</p>
+                                </label>
+                                <label class="custom-checkbox">
+                                    <div class="checkbox-container">
+                                        <input type="checkbox">
+                                        <span class="checkmark"></span>
+                                    </div>
+                                    <p class="text-body-md-regular text-gray-8">Skin care</p>
+                                </label>
+                                <label class="custom-checkbox">
+                                    <div class="checkbox-container">
+                                        <input type="checkbox">
+                                        <span class="checkmark"></span>
+                                    </div>
+                                    <p class="text-body-md-regular text-gray-8">Targeted health</p>
+                                </label>
+                                <label class="custom-checkbox">
+                                    <div class="checkbox-container">
+                                        <input type="checkbox">
+                                        <span class="checkmark"></span>
+                                    </div>
+                                    <p class="text-body-md-regular text-gray-8">More item 1</p>
+                                </label>
+                            </div>
+
+                            <div class="collapse-check-list">
+                                <div class="collapse-check-button">
+                                    <figure class="w-5 h-5"><img src="../html/assets/image/icon/double-chev-down-20.svg"
+                                            alt="icon"></figure>
+                                </div>
+                                <p class="more text-body-sm-regular text-gray-9">View more</p>
+                                <p class="less hidden text-body-sm-regular text-gray-9">View less</p>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <div class="flex flex-wrap items-center justify-between gap-6">
+                        <h2 class="text-heading-h3-5 text-gray-8">Product list</h2>
+                        <div class="flex gap-4">
+                            <p class="pt-2.5 text-body-md-medium text-gray-8 whitespace-nowrap">Sort by</p>
+                            <div class="flex flex-wrap gap-3">
+                                <div class="text-body-md-medium tab-item active">
+                                    Best seller
+                                </div>
+                                <div class="text-body-md-medium tab-item">
+                                    Low price
+                                </div>
+                                <div class="text-body-md-medium tab-item">
+                                    High price
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- vỉew -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-y-8 gap-x-6 py-8">
+                        <!-- item -->
+                        <div class="bg-white rounded-3xl">
+                            <div class="max-h-[232px] overflow-hidden">
+                                <figure><img src="../html/assets/image/homepage/best-sell-product.png" alt="product">
+                                </figure>
+                            </div>
+                            <div class="flex flex-col gap-3 px-6 pb-[20px] mt-4">
+                                <div class="flex flex-col gap-1">
+                                    <p class="text-body-sm-regular text-neutral-500">Naturally Sweetened</p>
+                                    <h2 class="lg:min-h-[72px] text-heading-h6 text-gray-9 truncate-2row">SureMeal Zero
+                                        Sugar
+                                        Original</h2>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="flex items-center gap-1">
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                    </div>
+                                    <p class="text-body-sm-regular text-neutral-500">30 Reviews</p>
+                                </div>
+                                <p class="truncate-3row text-body-md-regular text-neutral-500">This powder
+                                    mix provides an
+                                    easy, affordable way to help meet your daily nutritional requirements.
+                                </p>
+                                <div class="">
+                                    <span class="text-body-sm-regular text-neutral-500">From</span>
+                                    <p class="text-heading-h7 text-gray-9">$48.00 </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-3xl">
+                            <div class="max-h-[232px] overflow-hidden">
+                                <figure><img src="../html/assets/image/homepage/best-sell-product.png" alt="product">
+                                </figure>
+                            </div>
+                            <div class="flex flex-col gap-3 px-6 pb-[20px] mt-4">
+                                <div class="flex flex-col gap-1">
+                                    <p class="text-body-sm-regular text-neutral-500">Naturally Sweetened</p>
+                                    <h2 class="lg:min-h-[72px] text-heading-h6 text-gray-9 truncate-2row">SureMeal Zero
+                                        Sugar
+                                        Original</h2>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="flex items-center gap-1">
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                    </div>
+                                    <p class="text-body-sm-regular text-neutral-500">30 Reviews</p>
+                                </div>
+                                <p class="truncate-3row text-body-md-regular text-neutral-500">This powder
+                                    mix provides an
+                                    easy, affordable way to help meet your daily nutritional requirements.
+                                </p>
+                                <div class="">
+                                    <span class="text-body-sm-regular text-neutral-500">From</span>
+                                    <p class="text-heading-h7 text-gray-9">$48.00 </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-3xl">
+                            <div class="max-h-[232px] overflow-hidden">
+                                <figure><img src="../html/assets/image/homepage/best-sell-product.png" alt="product">
+                                </figure>
+                            </div>
+                            <div class="flex flex-col gap-3 px-6 pb-[20px] mt-4">
+                                <div class="flex flex-col gap-1">
+                                    <p class="text-body-sm-regular text-neutral-500">Naturally Sweetened</p>
+                                    <h2 class="lg:min-h-[72px] text-heading-h6 text-gray-9 truncate-2row">SureMeal Zero
+                                        Sugar
+                                        Original</h2>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="flex items-center gap-1">
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                    </div>
+                                    <p class="text-body-sm-regular text-neutral-500">30 Reviews</p>
+                                </div>
+                                <p class="truncate-3row text-body-md-regular text-neutral-500">This powder
+                                    mix provides an
+                                    easy, affordable way to help meet your daily nutritional requirements.
+                                </p>
+                                <div class="">
+                                    <span class="text-body-sm-regular text-neutral-500">From</span>
+                                    <p class="text-heading-h7 text-gray-9">$48.00 </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-3xl">
+                            <div class="max-h-[232px] overflow-hidden">
+                                <figure><img src="../html/assets/image/homepage/best-sell-product.png" alt="product">
+                                </figure>
+                            </div>
+                            <div class="flex flex-col gap-3 px-6 pb-[20px] mt-4">
+                                <div class="flex flex-col gap-1">
+                                    <p class="text-body-sm-regular text-neutral-500">Naturally Sweetened</p>
+                                    <h2 class="lg:min-h-[72px] text-heading-h6 text-gray-9 truncate-2row">SureMeal Zero
+                                        Sugar
+                                        Original</h2>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="flex items-center gap-1">
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                    </div>
+                                    <p class="text-body-sm-regular text-neutral-500">30 Reviews</p>
+                                </div>
+                                <p class="truncate-3row text-body-md-regular text-neutral-500">This powder
+                                    mix provides an
+                                    easy, affordable way to help meet your daily nutritional requirements.
+                                </p>
+                                <div class="">
+                                    <span class="text-body-sm-regular text-neutral-500">From</span>
+                                    <p class="text-heading-h7 text-gray-9">$48.00 </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-3xl">
+                            <div class="max-h-[232px] overflow-hidden">
+                                <figure><img src="../html/assets/image/homepage/best-sell-product.png" alt="product">
+                                </figure>
+                            </div>
+                            <div class="flex flex-col gap-3 px-6 pb-[20px] mt-4">
+                                <div class="flex flex-col gap-1">
+                                    <p class="text-body-sm-regular text-neutral-500">Naturally Sweetened</p>
+                                    <h2 class="lg:min-h-[72px] text-heading-h6 text-gray-9 truncate-2row">SureMeal Zero
+                                        Sugar
+                                        Original</h2>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="flex items-center gap-1">
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                    </div>
+                                    <p class="text-body-sm-regular text-neutral-500">30 Reviews</p>
+                                </div>
+                                <p class="truncate-3row text-body-md-regular text-neutral-500">This powder
+                                    mix provides an
+                                    easy, affordable way to help meet your daily nutritional requirements.
+                                </p>
+                                <div class="">
+                                    <span class="text-body-sm-regular text-neutral-500">From</span>
+                                    <p class="text-heading-h7 text-gray-9">$48.00 </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-3xl">
+                            <div class="max-h-[232px] overflow-hidden">
+                                <figure><img src="../html/assets/image/homepage/best-sell-product.png" alt="product">
+                                </figure>
+                            </div>
+                            <div class="flex flex-col gap-3 px-6 pb-[20px] mt-4">
+                                <div class="flex flex-col gap-1">
+                                    <p class="text-body-sm-regular text-neutral-500">Naturally Sweetened</p>
+                                    <h2 class="lg:min-h-[72px] text-heading-h6 text-gray-9 truncate-2row">SureMeal Zero
+                                        Sugar
+                                        Original</h2>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="flex items-center gap-1">
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                    </div>
+                                    <p class="text-body-sm-regular text-neutral-500">30 Reviews</p>
+                                </div>
+                                <p class="truncate-3row text-body-md-regular text-neutral-500">This powder
+                                    mix provides an
+                                    easy, affordable way to help meet your daily nutritional requirements.
+                                </p>
+                                <div class="">
+                                    <span class="text-body-sm-regular text-neutral-500">From</span>
+                                    <p class="text-heading-h7 text-gray-9">$48.00 </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-3xl">
+                            <div class="max-h-[232px] overflow-hidden">
+                                <figure><img src="../html/assets/image/homepage/best-sell-product.png" alt="product">
+                                </figure>
+                            </div>
+                            <div class="flex flex-col gap-3 px-6 pb-[20px] mt-4">
+                                <div class="flex flex-col gap-1">
+                                    <p class="text-body-sm-regular text-neutral-500">Naturally Sweetened</p>
+                                    <h2 class="lg:min-h-[72px] text-heading-h6 text-gray-9 truncate-2row">SureMeal Zero
+                                        Sugar
+                                        Original</h2>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="flex items-center gap-1">
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                    </div>
+                                    <p class="text-body-sm-regular text-neutral-500">30 Reviews</p>
+                                </div>
+                                <p class="truncate-3row text-body-md-regular text-neutral-500">This powder
+                                    mix provides an
+                                    easy, affordable way to help meet your daily nutritional requirements.
+                                </p>
+                                <div class="">
+                                    <span class="text-body-sm-regular text-neutral-500">From</span>
+                                    <p class="text-heading-h7 text-gray-9">$48.00 </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-3xl">
+                            <div class="max-h-[232px] overflow-hidden">
+                                <figure><img src="../html/assets/image/homepage/best-sell-product.png" alt="product">
+                                </figure>
+                            </div>
+                            <div class="flex flex-col gap-3 px-6 pb-[20px] mt-4">
+                                <div class="flex flex-col gap-1">
+                                    <p class="text-body-sm-regular text-neutral-500">Naturally Sweetened</p>
+                                    <h2 class="lg:min-h-[72px] text-heading-h6 text-gray-9 truncate-2row">SureMeal Zero
+                                        Sugar
+                                        Original</h2>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="flex items-center gap-1">
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                    </div>
+                                    <p class="text-body-sm-regular text-neutral-500">30 Reviews</p>
+                                </div>
+                                <p class="truncate-3row text-body-md-regular text-neutral-500">This powder
+                                    mix provides an
+                                    easy, affordable way to help meet your daily nutritional requirements.
+                                </p>
+                                <div class="">
+                                    <span class="text-body-sm-regular text-neutral-500">From</span>
+                                    <p class="text-heading-h7 text-gray-9">$48.00 </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-3xl">
+                            <div class="max-h-[232px] overflow-hidden">
+                                <figure><img src="../html/assets/image/homepage/best-sell-product.png" alt="product">
+                                </figure>
+                            </div>
+                            <div class="flex flex-col gap-3 px-6 pb-[20px] mt-4">
+                                <div class="flex flex-col gap-1">
+                                    <p class="text-body-sm-regular text-neutral-500">Naturally Sweetened</p>
+                                    <h2 class="lg:min-h-[72px] text-heading-h6 text-gray-9 truncate-2row">SureMeal Zero
+                                        Sugar
+                                        Original</h2>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="flex items-center gap-1">
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                        <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                        </figure>
+                                    </div>
+                                    <p class="text-body-sm-regular text-neutral-500">30 Reviews</p>
+                                </div>
+                                <p class="truncate-3row text-body-md-regular text-neutral-500">This powder
+                                    mix provides an
+                                    easy, affordable way to help meet your daily nutritional requirements.
+                                </p>
+                                <div class="">
+                                    <span class="text-body-sm-regular text-neutral-500">From</span>
+                                    <p class="text-heading-h7 text-gray-9">$48.00 </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- .pagination -->
+                    <div class="pagination">
+                        <button class="page-item prev" aria-label="Previous">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
+                                fill="none">
+                                <path
+                                    d="M10.3537 12.6463C10.4001 12.6927 10.437 12.7479 10.4621 12.8086C10.4872 12.8693 10.5002 12.9343 10.5002 13C10.5002 13.0657 10.4872 13.1308 10.4621 13.1915C10.437 13.2521 10.4001 13.3073 10.3537 13.3538C10.3072 13.4002 10.252 13.4371 10.1914 13.4622C10.1307 13.4873 10.0656 13.5003 9.99991 13.5003C9.93421 13.5003 9.86915 13.4873 9.80846 13.4622C9.74776 13.4371 9.69261 13.4002 9.64615 13.3538L4.64615 8.35375C4.59967 8.30732 4.56279 8.25217 4.53763 8.19147C4.51246 8.13077 4.49951 8.06571 4.49951 8C4.49951 7.9343 4.51246 7.86923 4.53763 7.80853C4.56279 7.74783 4.59967 7.69269 4.64615 7.64625L9.64615 2.64625C9.73997 2.55243 9.86722 2.49973 9.99991 2.49973C10.1326 2.49973 10.2598 2.55243 10.3537 2.64625C10.4475 2.74007 10.5002 2.86732 10.5002 3C10.5002 3.13269 10.4475 3.25993 10.3537 3.35375L5.70678 8L10.3537 12.6463Z"
+                                    fill="#0F0F0F" />
+                            </svg></button>
+                        <button class="page-item active">1</button>
+                        <button class="page-item">2</button>
+                        <button class="page-item">3</button>
+                        <button class="page-item">4</button>
+                        <button class="page-item">5</button>
+                        <button class="page-item next" aria-label="Next">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
+                                fill="none">
+                                <path
+                                    d="M11.3538 8.35375L6.35378 13.3538C6.30733 13.4002 6.25218 13.4371 6.19148 13.4622C6.13079 13.4873 6.06573 13.5003 6.00003 13.5003C5.93434 13.5003 5.86928 13.4873 5.80859 13.4622C5.74789 13.4371 5.69274 13.4002 5.64628 13.3538C5.59983 13.3073 5.56298 13.2521 5.53784 13.1915C5.5127 13.1308 5.49976 13.0657 5.49976 13C5.49976 12.9343 5.5127 12.8693 5.53784 12.8086C5.56298 12.7479 5.59983 12.6927 5.64628 12.6463L10.2932 8L5.64628 3.35375C5.55246 3.25993 5.49976 3.13269 5.49976 3C5.49976 2.86732 5.55246 2.74007 5.64628 2.64625C5.7401 2.55243 5.86735 2.49973 6.00003 2.49973C6.13272 2.49973 6.25996 2.55243 6.35378 2.64625L11.3538 7.64625C11.4003 7.69269 11.4372 7.74783 11.4623 7.80853C11.4875 7.86923 11.5004 7.9343 11.5004 8C11.5004 8.06571 11.4875 8.13077 11.4623 8.19147C11.4372 8.25217 11.4003 8.30732 11.3538 8.35375Z"
+                                    fill="#0F0F0F" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-10 lg:py-20">
+            <div class="container flex flex-col gap-6">
+                <div class="flex flex-row gap-6 md:items-center justify-between">
+                    <div class="flex flex-col gap-2 flex-1">
+                        <h2 class="text-heading-h3-5 text-gray-8">Related Products
+                        </h2>
+                    </div>
+                    <div class="flex items-end gap-3">
+                        <button
+                            class="button bg-white w-10 h-10 xl:w-16 xl:h-16 p-0 flex items-center justify-center shadow-button">
+                            <figure class="w-6 xl:w-8 h-6 xl:h-8 rotate-180"><img
+                                    src="../html/assets/image/icon/arrow-right.svg" alt="icon">
+                            </figure>
+                        </button>
+                        <button
+                            class="button bg-white w-10 h-10 xl:w-16 xl:h-16 p-0 flex items-center justify-center shadow-button">
+                            <figure class="w-6 xl:w-8 h-6 xl:h-8"><img src="../html/assets/image/icon/arrow-right.svg"
+                                    alt="icon">
+                            </figure>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- vỉew -->
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
+                    <!-- item -->
+                    <div class="bg-white rounded-3xl">
+                        <div class="max-h-[232px] overflow-hidden">
+                            <figure><img src="../html/assets/image/homepage/best-sell-product.png" alt="product">
+                            </figure>
+                        </div>
+                        <div class="flex flex-col gap-3 px-6 pb-[20px] mt-4">
+                            <div class="flex flex-col gap-1">
+                                <p class="text-body-sm-regular text-neutral-500">Naturally Sweetened</p>
+                                <h2 class="lg:min-h-[72px] text-heading-h6 text-gray-9 truncate-2row">SureMeal Zero
+                                    Sugar
+                                    Original</h2>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-1">
+                                    <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                    </figure>
+                                    <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                    </figure>
+                                    <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                    </figure>
+                                    <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                    </figure>
+                                    <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                    </figure>
+                                </div>
+                                <p class="text-body-sm-regular text-neutral-500">30 Reviews</p>
+                            </div>
+                            <p class="truncate-3row text-body-md-regular text-neutral-500">This powder
+                                mix provides an
+                                easy, affordable way to help meet your daily nutritional requirements.
+                            </p>
+                            <div class="">
+                                <span class="text-body-sm-regular text-neutral-500">From</span>
+                                <p class="text-heading-h7 text-gray-9">$48.00 </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-3xl">
+                        <div class="max-h-[232px] overflow-hidden">
+                            <figure><img src="../html/assets/image/homepage/best-sell-product.png" alt="product">
+                            </figure>
+                        </div>
+                        <div class="flex flex-col gap-3 px-6 pb-[20px] mt-4">
+                            <div class="flex flex-col gap-1">
+                                <p class="text-body-sm-regular text-neutral-500">Naturally Sweetened</p>
+                                <h2 class="lg:min-h-[72px] text-heading-h6 text-gray-9 truncate-2row">SureMeal Zero
+                                    Sugar
+                                    Original</h2>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-1">
+                                    <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                    </figure>
+                                    <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                    </figure>
+                                    <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                    </figure>
+                                    <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                    </figure>
+                                    <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                    </figure>
+                                </div>
+                                <p class="text-body-sm-regular text-neutral-500">30 Reviews</p>
+                            </div>
+                            <p class="truncate-3row text-body-md-regular text-neutral-500">This powder
+                                mix provides an
+                                easy, affordable way to help meet your daily nutritional requirements.
+                            </p>
+                            <div class="">
+                                <span class="text-body-sm-regular text-neutral-500">From</span>
+                                <p class="text-heading-h7 text-gray-9">$48.00 </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-3xl">
+                        <div class="max-h-[232px] overflow-hidden">
+                            <figure><img src="../html/assets/image/homepage/best-sell-product.png" alt="product">
+                            </figure>
+                        </div>
+                        <div class="flex flex-col gap-3 px-6 pb-[20px] mt-4">
+                            <div class="flex flex-col gap-1">
+                                <p class="text-body-sm-regular text-neutral-500">Naturally Sweetened</p>
+                                <h2 class="lg:min-h-[72px] text-heading-h6 text-gray-9 truncate-2row">SureMeal Zero
+                                    Sugar
+                                    Original</h2>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-1">
+                                    <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                    </figure>
+                                    <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                    </figure>
+                                    <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                    </figure>
+                                    <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                    </figure>
+                                    <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                    </figure>
+                                </div>
+                                <p class="text-body-sm-regular text-neutral-500">30 Reviews</p>
+                            </div>
+                            <p class="truncate-3row text-body-md-regular text-neutral-500">This powder
+                                mix provides an
+                                easy, affordable way to help meet your daily nutritional requirements.
+                            </p>
+                            <div class="">
+                                <span class="text-body-sm-regular text-neutral-500">From</span>
+                                <p class="text-heading-h7 text-gray-9">$48.00 </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-3xl">
+                        <div class="max-h-[232px] overflow-hidden">
+                            <figure><img src="../html/assets/image/homepage/best-sell-product.png" alt="product">
+                            </figure>
+                        </div>
+                        <div class="flex flex-col gap-3 px-6 pb-[20px] mt-4">
+                            <div class="flex flex-col gap-1">
+                                <p class="text-body-sm-regular text-neutral-500">Naturally Sweetened</p>
+                                <h2 class="lg:min-h-[72px] text-heading-h6 text-gray-9 truncate-2row">SureMeal Zero
+                                    Sugar
+                                    Original</h2>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div class="flex items-center gap-1">
+                                    <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                    </figure>
+                                    <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                    </figure>
+                                    <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                    </figure>
+                                    <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                    </figure>
+                                    <figure><img src="../html/assets/image/icon/star-second.svg" alt="icon">
+                                    </figure>
+                                </div>
+                                <p class="text-body-sm-regular text-neutral-500">30 Reviews</p>
+                            </div>
+                            <p class="truncate-3row text-body-md-regular text-neutral-500">This powder
+                                mix provides an
+                                easy, affordable way to help meet your daily nutritional requirements.
+                            </p>
+                            <div class="">
+                                <span class="text-body-sm-regular text-neutral-500">From</span>
+                                <p class="text-heading-h7 text-gray-9">$48.00 </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <div class="grid grid-cols-3">
+                <div class="bg-deliver-1">
+                    <div class="relative z-[2] flex flex-col max-w-[19.75rem]">
+                        <figure><img src="../html/assets/image/icon/car-shop.svg" alt="icon"></figure>
+                        <h2 class="mt-5 text-heading-h7 text-neutral-50 text-center">Free U.S Shipping to 48 States
+                            (Orders $100 and
+                            up)</h2>
+                        <p class="mt-2 text-body-lg-regular text-neutral-50 text-center">Outside the U.S? E-mail <br>
+                            <a href="#" class="hover:text-primary">info.suremeal@gmail.com</a>
+                        </p>
+                    </div>
+                </div>
+                <div class="bg-deliver-2">
+                    <div class="relative z-[2] flex flex-col max-w-[19.75rem]">
+                        <figure><img src="../html/assets/image/icon/call-phone.svg" alt="icon"></figure>
+                        <h2 class="mt-5 text-heading-h7 text-neutral-50 text-center">Avaiable by Phone 24/7</h2>
+                        <a href="#"
+                            class="mt-2 text-body-lg-regular text-neutral-50 text-center hover:text-primary">1-800-290-6075</a>
+                    </div>
+                </div>
+                <div class="bg-deliver-3">
+                    <div class="relative z-[2] flex flex-col max-w-[19.75rem]">
+                        <figure><img src="../html/assets/image/icon/car-shop.svg" alt="icon"></figure>
+                        <h2 class="mt-5 text-heading-h7 text-neutral-50 text-center">FInd a Dealer Near You!</h2>
+                        <a href="#"
+                            class="mt-2 text-body-lg-regular text-neutral-50 text-center hover:text-primary">Click Here
+                            to
+                            Search</a>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-[#161A28]">
+        <div class="footer pt-16 pb-8 container max-w-[101rem]">
+            <div class="flex flex-wrap gap-10 justify-between">
+                <!-- left col logo -->
+                <div class="flex flex-col gap-4">
+                    <a href="">
+                        <figure class="justify-start"><img src="../html/assets/image/footer-logo.png" alt="logo">
+                        </figure>
+                    </a>
+                    <!-- chứng chỉ -->
+                    <div class="flex gap-2 items-center">
+                        <figure class="w-[5.9375rem] h-[5.9375rem] rounded-full">
+                            <img src="../html/assets/image/header-footer/fda.svg" alt="icon">
+                        </figure>
+                        <figure class="w-[5.9375rem] h-[5.9375rem] rounded-full">
+                            <img src="../html/assets/image/header-footer/gmp.svg" alt="icon">
+                        </figure>
+                        <figure class="w-[5.9375rem] h-[5.9375rem] rounded-full">
+                            <img src="../html/assets/image/header-footer/miu.svg" alt="icon">
+                        </figure>
+                    </div>
+                </div>
+                <!-- right info -->
+                <div class="flex flex-wrap gap-10 2xl:gap-20 3xl:gap-[6.75rem]">
+                    <!-- first col -->
+                    <div class="w-[19.875rem] flex flex-col gap-6">
+                        <h2 class="text-body-md-bold text-white">Customer Support</h2>
+                        <div class="flex flex-col gap-2.5">link
+                            <div class="flex gap-3 items-center footer-hover-">
+                                <div class="icon">
+                                    <figure class="w-5 h-5"><img src="../html/assets/image/icon/call-calling.svg"
+                                            alt="icon">
+                                    </figure>
+                                </div>
+                                <div class="flex-1 text text-body-md-regular text-white">
+                                    <p>Tel</p>
+                                    <a href="#" class="font-semibold">1-800-290-6075</a>
+                                </div>
+                            </div>
+                            <div class="flex gap-3 items-center footer-hover-link">
+                                <div class="icon">
+                                    <figure class="w-5 h-5"><img src="../html/assets/image/icon/sms.svg" alt="icon">
+                                    </figure>
+
+                                </div>
+                                <div class="flex-1 text text-body-md-regular text-white">
+                                    <p>Mail</p>
+                                    <a href="#" class="font-semibold">info.suremeal@gmail.com</a>
+                                </div>
+                            </div>
+                            <div class="flex gap-3 items-center footer-hover-link">
+                                <div class="icon">
+                                    <figure class="w-5 h-5"><img src="../html/assets/image/icon/map-point.svg"
+                                            alt="icon">
+                                    </figure>
+
+                                </div>
+                                <div class="flex-1 text text-body-md-regular text-white">
+                                    <p>Location</p>
+                                    <a href="#" class="font-semibold">8815 Fairbanks North Houston Rd Houston, TX
+                                        77064</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- second col -->
+                    <div class="w-[14.6875rem] flex flex-col gap-6">
+                        <h2 class="text-body-md-bold text-white">Services</h2>
+                        <div class="">
+                            <ul class="flex flex-col gap-2">
+                                <li class="text-body-md-regular">
+                                    <a href="#" class="text-white hover:text-primary">Health & Wellness Blog</a>
+                                </li>
+                                <li class="text-body-md-regular">
+                                    <a href="#" class="text-white hover:text-primary">Search</a>
+                                </li>
+                                <li class="text-body-md-regular">
+                                    <a href="#" class="text-white hover:text-primary">Contact us</a>
+                                </li>
+                                <li class="text-body-md-regular">
+                                    <a href="#" class="text-white hover:text-primary">Returns</a>
+                                </li>
+                                <li class="text-body-md-regular">
+                                    <a href="#" class="text-white hover:text-primary">Privacy Policy</a>
+                                </li>
+                                <li class="text-body-md-regular">
+                                    <a href="#" class="text-white hover:text-primary">Tearms of Service</a>
+                                </li>
+                                <li class="text-body-md-regular">
+                                    <a href="#" class="text-white hover:text-primary">Satisfaction Guarantee</a>
+                                </li>
+                                <li class="text-body-md-regular">
+                                    <a href="#" class="text-white hover:text-primary">Wholesale Account</a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- third row -->
+                    <div class="w-[21.25rem] 2xl:w-[22.625rem] flex flex-col gap-4">
+                        <h2 class="text-body-md-bold text-white">Join our Mailing List</h2>
+                        <div class="flex flex-col gap-10">
+                            <form>
+                                <label for="" class="relative footer-input">
+                                    <input type="text" class="input-footer" placeholder="Your email">
+                                    <button class="button bg-primary p-8-20 text-body-md-semibold">Subscribe</button>
+                                </label>
+                            </form>
+                            <div class="flex flex-wrap gap-3">
+                                <figure><img src="../html/assets/image/header-footer/footer-visa.svg" alt="icon">
+                                </figure>
+                                <figure><img src="../html/assets/image/header-footer/footer-pp.svg" alt="icon"></figure>
+                                <figure><img src="../html/assets/image/header-footer/footer-amex.svg" alt="icon">
+                                </figure>
+                                <figure><img src="../html/assets/image/header-footer/footer-ap.svg" alt="icon"></figure>
+                                <figure><img src="../html/assets/image/header-footer/footer-pp.svg" alt="icon"></figure>
+                                <figure><img src="../html/assets/image/header-footer/footer-jcb.svg" alt="icon">
+                                </figure>
+                                <figure><img src="../html/assets/image/header-footer/footer-dcv.svg" alt="icon">
+                                </figure>
+                                <figure><img src="../html/assets/image/header-footer/footer-dc.svg" alt="icon"></figure>
+                            </div>
+
+                            <div class="flex flex-col gap-3">
+                                <h2 class="text-body-md-bold text-white">Join our Mailing List</h2>
+                                <div class="flex items-center gap-2.5">
+                                    <div class="social-icon">
+                                        <figure>
+                                            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"
+                                                xmlns="http://www.w3.org/2000/svg">
+                                                <g id="Twiter" clip-path="url(#clip0_4031_3796)">
+                                                    <path id="Vector"
+                                                        d="M10.6442 7.42241L16.7519 0.322754H15.3046L10.0013 6.48728L5.76558 0.322754H0.880188L7.28541 9.64462L0.880188 17.0897H2.32759L7.92799 10.5797L12.4012 17.0897H17.2866L10.6439 7.42241H10.6442ZM8.66182 9.72674L8.01283 8.7985L2.84911 1.41234H5.07223L9.23942 7.3732L9.8884 8.30145L15.3052 16.0497H13.0821L8.66182 9.7271V9.72674Z"
+                                                        fill="#101828" />
+                                                </g>
+                                                <defs>
+                                                    <clipPath id="clip0_4031_3796">
+                                                        <rect width="16.7756" height="16.7756" fill="white"
+                                                            transform="translate(0.688782 0.322754)" />
+                                                    </clipPath>
+                                                </defs>
+                                            </svg>
+                                        </figure>
+                                    </div>
+                                    <div class="social-icon">
+                                        <figure>
+                                            <svg width="10" height="17" viewBox="0 0 10 17" fill="none"
+                                                xmlns="http://www.w3.org/2000/svg">
+                                                <g id="Capa 2">
+                                                    <g id="ELEMENTS">
+                                                        <path id="Vector"
+                                                            d="M8.58172 9.6754L9.03765 6.77854H6.22909V4.89558C6.22909 4.10347 6.62119 3.32946 7.87502 3.32946H9.16988V0.862602C8.41581 0.742355 7.65386 0.677302 6.89019 0.667969C4.57859 0.667969 3.06944 2.05756 3.06944 4.56968V6.77854H0.50708V9.6754H3.06944V16.6822H6.22909V9.6754H8.58172Z"
+                                                            fill="#101828" />
+                                                    </g>
+                                                </g>
+                                            </svg>
+                                        </figure>
+                                    </div>
+                                    <div class="social-icon">
+                                        <figure>
+                                            <svg width="17" height="17" viewBox="0 0 17 17" fill="none"
+                                                xmlns="http://www.w3.org/2000/svg">
+                                                <g id="Group 15">
+                                                    <path id="Vector"
+                                                        d="M5.67033 8.67459C5.67033 7.20058 6.86459 6.00534 8.33817 6.00534C9.81176 6.00534 11.0067 7.20058 11.0067 8.67459C11.0067 10.1486 9.81176 11.3438 8.33817 11.3438C6.86459 11.3438 5.67033 10.1486 5.67033 8.67459ZM4.22781 8.67459C4.22781 10.9454 6.06801 12.7861 8.33817 12.7861C10.6083 12.7861 12.4485 10.9454 12.4485 8.67459C12.4485 6.40377 10.6083 4.56304 8.33817 4.56304C6.06801 4.56304 4.22781 6.40377 4.22781 8.67459ZM11.6507 4.40001C11.6506 4.59005 11.7069 4.77584 11.8124 4.9339C11.9178 5.09195 12.0678 5.21517 12.2433 5.28796C12.4188 5.36076 12.6119 5.37986 12.7983 5.34286C12.9846 5.30586 13.1558 5.21442 13.2902 5.08009C13.4246 4.94577 13.5162 4.7746 13.5533 4.58823C13.5904 4.40185 13.5715 4.20865 13.4989 4.03305C13.4262 3.85745 13.3032 3.70733 13.1453 3.60169C12.9873 3.49605 12.8016 3.43962 12.6116 3.43954H12.6113C12.3566 3.43966 12.1124 3.54088 11.9323 3.72096C11.7522 3.90105 11.6509 4.14528 11.6507 4.40001V4.40001ZM5.10423 15.1922C4.3238 15.1566 3.89961 15.0266 3.61771 14.9167C3.24398 14.7712 2.97733 14.5979 2.69697 14.3178C2.41661 14.0378 2.24306 13.7713 2.09821 13.3974C1.98832 13.1156 1.85832 12.6911 1.82284 11.9105C1.78404 11.0665 1.77629 10.8129 1.77629 8.67466C1.77629 6.53637 1.78468 6.28354 1.82284 5.43882C1.85838 4.65816 1.98934 4.23455 2.09821 3.95187C2.2437 3.57803 2.41699 3.3113 2.69697 3.03086C2.97694 2.75042 3.24334 2.57682 3.61771 2.43193C3.89948 2.32201 4.3238 2.19197 5.10423 2.15648C5.948 2.11766 6.20147 2.10991 8.33817 2.10991C10.4749 2.10991 10.7286 2.1183 11.5731 2.15648C12.3535 2.19203 12.777 2.32303 13.0596 2.43193C13.4333 2.57682 13.7 2.7508 13.9803 3.03086C14.2607 3.31092 14.4336 3.57803 14.5791 3.95187C14.689 4.23372 14.819 4.65816 14.8545 5.43882C14.8933 6.28354 14.901 6.53637 14.901 8.67466C14.901 10.8129 14.8933 11.0658 14.8545 11.9105C14.8189 12.6911 14.6883 13.1155 14.5791 13.3974C14.4336 13.7713 14.2603 14.038 13.9803 14.3178C13.7004 14.5976 13.4333 14.7712 13.0596 14.9167C12.7778 15.0267 12.3535 15.1567 11.5731 15.1922C10.7293 15.231 10.4758 15.2388 8.33817 15.2388C6.20051 15.2388 5.94775 15.231 5.10423 15.1922V15.1922ZM5.03796 0.715972C4.1858 0.75479 3.60349 0.88995 3.09497 1.08789C2.56831 1.29229 2.12248 1.56652 1.67696 2.01146C1.23145 2.4564 0.958005 2.90307 0.753658 3.42987C0.555779 3.93887 0.420658 4.52101 0.381851 5.37342C0.342403 6.22717 0.333374 6.50012 0.333374 8.67459C0.333374 10.8491 0.342403 11.122 0.381851 11.9758C0.420658 12.8282 0.555779 13.4103 0.753658 13.9193C0.958005 14.4458 1.23151 14.893 1.67696 15.3377C2.12241 15.7825 2.56831 16.0563 3.09497 16.2613C3.60446 16.4592 4.1858 16.5944 5.03796 16.6332C5.89191 16.672 6.16433 16.6817 8.33817 16.6817C10.512 16.6817 10.7849 16.6727 11.6384 16.6332C12.4906 16.5944 13.0725 16.4592 13.5814 16.2613C14.1077 16.0563 14.5539 15.7827 14.9994 15.3377C15.4449 14.8928 15.7178 14.4458 15.9227 13.9193C16.1206 13.4103 16.2563 12.8282 16.2945 11.9758C16.3333 11.1214 16.3423 10.8491 16.3423 8.67459C16.3423 6.50012 16.3333 6.22717 16.2945 5.37342C16.2557 4.52095 16.1206 3.93855 15.9227 3.42987C15.7178 2.90339 15.4442 2.4571 14.9994 2.01146C14.5546 1.56581 14.1077 1.29229 13.582 1.08789C13.0725 0.88995 12.4906 0.754149 11.639 0.715972C10.7855 0.677153 10.5127 0.66748 8.33881 0.66748C6.16497 0.66748 5.89191 0.676512 5.03796 0.715972Z"
+                                                        fill="#101828" />
+                                                </g>
+                                            </svg>
+                                        </figure>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="divider-footer">
+
+            <div class="flex items-center justify-center mt-6">
+                <p class="text-body-md-regular text-white">
+                    Copyright @2024 SureMeal | Designed by <a href="" class="hover:text-primary">Qixtech - Web Design &
+                        Digital Marketing</a>
+                </p>
+            </div>
+        </div>
+    </footer>
+
+
+    <!-- swiper script -->
+    <script defer>
+        const productSwiper = new Swiper('#product-swiper', {
+            // Optional parameters
+            slidesPerView: 1,
+            spaceBetween: 0,
+            // direction: getDirection(),
+            // centeredSlides: true,
+            // roundLengths: true,
+            loop: true,
+            autoplay: true,
+            breakpoints: {
+                552: {
+                    slidesPerView: 1,
+                },
+                1200: {
+                    slidesPerView: 1,
+                },
+                2560: {
+                    slidesPerView: 1,
+                }
+            },
+
+            // If we need pagination
+            pagination: {
+                el: '.swiper-pagination',
+                clickable: true,
+            },
+
+            // Navigation arrows
+            navigation: {
+                nextEl: '.swiper-button-next',
+                prevEl: '.swiper-button-prev',
+            },
+
+            // And if we need scrollbar
+            scrollbar: {
+                el: '.swiper-scrollbar',
+
+            },
+        });
+    </script>
+
+
+    <!-- script filter -->
+    <script defer>
+        document.querySelectorAll('.collapse-title').forEach((title) => {
+            title.addEventListener('click', () => {
+                const item = title.nextElementSibling; // Giả sử item ngay sau title
+                const button = title.querySelector('.collapse-button');
+
+                // Toggle class 'collapsed' cho item
+                item.classList.toggle('collapsed');
+
+                // Xoay button 180 độ
+                const isCollapsed = item.classList.contains('collapsed');
+                button.style.transform = isCollapsed ? 'rotate(180deg)' : 'rotate(0deg)';
+            });
+        });
+
+        document.querySelectorAll('.collapse-check-list').forEach((collapseCheckList) => {
+            collapseCheckList.addEventListener('click', () => {
+                const collapseItem = collapseCheckList.closest('.collapse-item');
+                const checkList = collapseItem.querySelector('.check-list');
+                const collapseCheckButton = collapseItem.querySelector('.collapse-check-button');
+                const moreText = collapseCheckList.querySelector('.more');
+                const lessText = collapseCheckList.querySelector('.less');
+
+                // Toggle the collapse class on check-list
+                const isCollapsed = checkList.classList.toggle('collapsed');
+
+                // Rotate the button 180 degrees
+                collapseCheckButton.style.transform = isCollapsed ? 'rotate(180deg)' : 'rotate(0deg)';
+
+                // Toggle the more and less text visibility
+                if (moreText && lessText) {
+                    moreText.classList.toggle('hidden');
+                    lessText.classList.toggle('hidden');
+                }
+            });
+        });
+    </script>
+
+    <!-- ranger picker -->
+    <script defer src="../html/assets/js/ranger-select.js"></script>
+
+    <!-- header script -->
+    <script defer src="../html/assets/js/header.js"></script>
+
+    <script defer src="../html/assets/js/tab-item.js"></script>
+</body>
+
+</html>

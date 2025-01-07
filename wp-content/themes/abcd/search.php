@@ -1,6 +1,43 @@
 <?php /* Template Name: Search result */ ?>
 <?php
 get_header();
+
+// Function to get dealer discount for a specific product
+function get_dealer_discount($dealer_id, $product_id)
+{
+    global $wpdb;
+    $discount = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT * FROM wp_discount_dealer 
+            WHERE id_dealer = %d AND product = %d",
+            $dealer_id,
+            $product_id
+        )
+    );
+    return $discount;
+}
+
+// Function to calculate final price with dealer discount
+function calculate_dealer_price($original_price, $discount)
+{
+    if (!$discount) return false;
+
+    if ($discount->discount_type == 0) {
+        // Fixed amount discount
+        return max(0, $original_price - $discount->discount_amount);
+    } else {
+        // Percentage discount
+        $discount_amount = $original_price * ($discount->discount_amount / 100);
+        return max(0, $original_price - $discount_amount);
+    }
+}
+
+$authenticated_dealer = validate_dealer_token();
+$dealer_id = null;
+if ($authenticated_dealer) {
+    $dealer_id = $authenticated_dealer->ID;
+}
+
 $search_query = get_search_query();
 
 $meta_query = [];
@@ -315,10 +352,30 @@ $cate_blog_list = get_terms(array(
                     $price = get_field('price', $value->ID);
 
                     $term_list = get_the_terms($value->ID, 'category_product');
+                    $sale_price = get_field('sale_price', $value->ID);
                     $des = get_field('short_description', $value->ID);
                     $instock = get_field('instock', $value->ID);
                     if (empty($instock)) {
                         $instock = 0;
+                    }
+
+                    // Get dealer discount if dealer is logged in
+                    $dealer_discount = $dealer_id ? get_dealer_discount($dealer_id, $value->ID) : null;
+
+                    // Calculate final price based on dealer discount
+                    $final_price = $price;
+                    if ($dealer_discount) {
+                        // Calculate dealer discount price from original price
+                        $dealer_price = calculate_dealer_price($price, $dealer_discount);
+                        // If there's a sale price, compare it with dealer price
+                        if ($sale_price) {
+                            $final_price = min($dealer_price, $sale_price);
+                        } else {
+                            $final_price = $dealer_price;
+                        }
+                    } else {
+                        // If no dealer discount, use sale price if available
+                        $final_price = $sale_price ? $sale_price : $price;
                     }
                 ?>
                     <div class="img-hover bg-white rounded-3xl overflow-hidden">
@@ -361,7 +418,22 @@ $cate_blog_list = get_terms(array(
                             </p>
                             <div class="">
                                 <span class="text-body-sm-regular text-neutral-500">From</span>
-                                <p class="text-heading-h7 text-gray-9"><?= formatBalance($price) ?></p>
+                                <?php if ($final_price < $price): ?>
+                                    <div class="flex items-center gap-2">
+                                        <p class="text-body-md-medium text-neutral-500 line-through">
+                                            <?= formatBalance($price) ?>
+                                        </p>
+                                        <p class="text-heading-h7 text-gray-9">
+                                            <?= formatBalance($final_price) ?>
+                                        </p>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="flex items-center gap-2">
+                                        <p class="text-heading-h7 text-gray-9">
+                                            <?= formatBalance($price) ?>
+                                        </p>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>

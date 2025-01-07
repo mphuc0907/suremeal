@@ -195,6 +195,13 @@ foreach ($menu_1 as $mn) {
     <!-- swiper -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <!-- mz -->
+    <link rel="stylesheet" href="<?= $url ?>/assets/magiczoom/magiczoom.css">
+    <script src="<?= $url ?>/assets/magiczoom/magiczoom.js"></script>
+    <!-- CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/flickity@2/dist/flickity.min.css">
+    <!-- JavaScript -->
+    <script src="https://unpkg.com/flickity@2/dist/flickity.pkgd.min.js"></script>
     <!-- jquery -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <!-- fancy box -->

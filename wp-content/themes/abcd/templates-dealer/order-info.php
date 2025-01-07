@@ -302,7 +302,11 @@ get_header();
                                         </div>
                                     <?php else: ?>
                                         <div class="flex flex-col items-end justify-end gap-1">
+<<<<<<< HEAD
                                             <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
+=======
+                                            <p class="text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
+>>>>>>> 92ca8f6acf5256fb4eda0fc1ac4ef5953356b33f
                                         </div>
                                     <?php endif; ?>
                                 </div>
@@ -437,7 +441,11 @@ get_header();
                                         </div>
                                     <?php else: ?>
                                         <div class="flex flex-col items-end justify-end gap-1">
+<<<<<<< HEAD
                                             <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
+=======
+                                            <p class="text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
+>>>>>>> 92ca8f6acf5256fb4eda0fc1ac4ef5953356b33f
                                         </div>
                                     <?php endif; ?>
                                 </div>
@@ -572,7 +580,11 @@ get_header();
                                         </div>
                                     <?php else: ?>
                                         <div class="flex flex-col items-end justify-end gap-1">
+<<<<<<< HEAD
                                             <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
+=======
+                                            <p class="text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
+>>>>>>> 92ca8f6acf5256fb4eda0fc1ac4ef5953356b33f
                                         </div>
                                     <?php endif; ?>
                                 </div>
@@ -705,7 +717,11 @@ get_header();
                                         </div>
                                     <?php else: ?>
                                         <div class="flex flex-col items-end justify-end gap-1">
+<<<<<<< HEAD
                                             <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
+=======
+                                            <p class="text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
+>>>>>>> 92ca8f6acf5256fb4eda0fc1ac4ef5953356b33f
                                         </div>
                                     <?php endif; ?>
                                 </div>
@@ -838,7 +854,11 @@ get_header();
                                         </div>
                                     <?php else: ?>
                                         <div class="flex flex-col items-end justify-end gap-1">
+<<<<<<< HEAD
                                             <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
+=======
+                                            <p class="text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
+>>>>>>> 92ca8f6acf5256fb4eda0fc1ac4ef5953356b33f
                                         </div>
                                     <?php endif; ?>
                                 </div>
