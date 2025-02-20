@@ -313,17 +313,12 @@ if ($status == 1) {
                                             <div class="flex-1 flex flex-col gap-2">
                                                 <h2 class="text-body-md-medium text-gray-8 truncate-2row"><?= $va['title'] ?></h2>
                                                 <div class="neutral-200 text-body-sm-regular text-gray-7">
-                                                    Type: <?= get_field('quantity', $idPro) ?> Pack
+                                                    Type: <?= $val['pack'] ?> Pack
                                                 </div>
                                             </div>
                                         </div>
                                         <p class="text-body-md-regular text-gray-8">Quantity: <?= $va['qty'] ?></p>
-
-                                        <?php if ($final_price < $price): ?>
-                                            <p class="text-body-md-medium text-primary"><?= formatBalance($final_price) ?></p>
-                                        <?php else: ?>
-                                            <p class="text-body-md-medium text-primary"><?= formatBalance($price) ?></p>
-                                        <?php endif; ?>
+                                        <p class="text-body-md-medium text-primary"><?= formatBalance($va['price']) ?></p>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
@@ -366,5 +361,26 @@ if ($status == 1) {
 </main>
 <?php get_footer() ?>
 <script !src="">
+    function myFunction(inputId) {
+        // Lấy input element
+        var copyText = document.getElementById(inputId);
 
+        copyText.style.display = "block";
+
+        // Select text
+        copyText.select();
+
+        try {
+            // Thực hiện copy
+            document.execCommand('copy');
+
+            // Thông báo
+            alert("<?php pll_e('Copied the text') ?>: " + copyText.value);
+        } catch (err) {
+            console.error('Copy error: ', err);
+        } finally {
+            // Ẩn input lại
+            copyText.style.display = "none";
+        }
+    }
 </script>

@@ -15,7 +15,7 @@ if (isset($_GET['sub'])) {
 $module_short_url = str_replace('admin.php?page=','', $module_path);
 
 $mess = '';
-$mdlconf = array('title'=>'Customer manager');
+$mdlconf = array('title'=>'Customer Management');
 
 
 if($sub==''){

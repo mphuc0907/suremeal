@@ -1,7 +1,7 @@
 <?php /* Template Name: Dealer-Business-Info */ ?>
 <?php 
 $authenticated_dealer = validate_dealer_token();
-if (!isset($_COOKIE['dealer_token']) || !$authenticated_dealer) {
+if (!(isset($_COOKIE['dealer_token']) && $authenticated_dealer)) {
     wp_redirect(home_url());
     exit;
 }
@@ -15,7 +15,6 @@ $business_email = $authenticated_dealer->business_email;
 $business_network = $authenticated_dealer->business_network;
 $business_website = $authenticated_dealer->business_website;
 $plan = $authenticated_dealer->plan;
-$status = $authenticated_dealer->status;
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
     $errors = [];
@@ -73,23 +72,9 @@ get_header();
     <div class="grid 2xl:grid-cols-7 xl:grid-cols-7 md:grid-cols-8 sm:grid-cols-1 grid-cols-1 gap-0">
         <div class="flex items-start col-span-1 2xl:col-span-1 xl:col-span-1 md:col-span-2 grid bg-white md:h-screen height-full">
             <ul class="list-none pl-0 text-left mt-0 memubar" x-data="{ top: true }">
-                <li class="flex items-center pt-4 pb-4 pl-6 item-f dashboard">
-                <a class="flex items-center no-underline" href="<?= home_url() ?>/dealer-dashboard"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/cuida.png" alt=""><img class="mr-3 w-6 active hidden" src="<?= $url ?>/assets/dealer/img/cuida_ac.png" alt=""><span class="menu-item">Dashboard</span></a>
-                </li>
                 <li class="flex items-center pt-4 pb-4 pl-6 item-f my-order">
                 <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/dealer-order-info"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/cart.png" alt=""><img class="mr-3 w-6 active hidden" src="<?= $url ?>/assets/dealer/img/cart_ac.png " alt=""><span class="menu-item">My orders</span></a>
                 </li>
-                <?php if($status == 2): ?>
-                    <li class="flex items-center pt-4 pb-4 pl-6 item-f management">
-                    <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/dealer-affiliate-order"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/tabler_shopping-bag-discount.png" alt=""><img class="mr-3 w-6 active hidden" src="<?= $url ?>/assets/dealer/img/tabler_shopping-bag-discount_ac.png" alt=""><span class="menu-item">Affiliate orders</span></a>
-                    </li>
-                    <li class="flex items-center pt-4 pb-4 pl-6 item-f management">
-                    <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/dealer-affiliate-customization"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/material-symbols_link.png" alt=""><img class="mr-3 w-6 hidden active" src="<?= $url ?>/assets/dealer/img/material-symbols_link_ac.png" alt=""><span class="menu-item">Affiliate link<br>customization</span></a>
-                    </li>
-                    <li class="flex items-center pt-4 pb-4 pl-6 item-f management">
-                    <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/point-management"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/reward.png" alt=""><img class="mr-3 w-6 hidden active" src="<?= $url ?>/assets/dealer/img/reward_ac.png" alt=""><span class="menu-item">Point management</span></a>
-                    </li>
-                <?php endif; ?>
                 <li class="pt-4 pb-4 pl-6 item-f account checkout-menu-active" >
                 <div class="flex items-center no-underline w-full" href="" x-on:click="top = ! top"><img class="mr-3 w-6 default hidden" src="<?= $url ?>/assets/dealer/img/circle.png" alt=""><img class="mr-3 w-6 active" src="<?= $url ?>/assets/dealer/img/circle_ac.png" alt="">
                     <span class="menu-item cursor-pointer">Account<br>information</span>
@@ -106,11 +91,6 @@ get_header();
                     <li class="mt-2">
                         <a class="no-underline text-sm blue-sure" href="<?= home_url() ?>/dealer-business-informmation">Business information</a>
                     </li>
-                    <?php if($status == 2): ?>
-                        <li class="mt-2">
-                            <a class="no-underline text-sm" href="<?= home_url() ?>/dealer-bank-informmation">Bank account information</a>
-                        </li>
-                    <?php endif; ?>
                 </ul>
                 </li>
             </ul>
@@ -125,15 +105,15 @@ get_header();
                         <input type="hidden" name="update_profile" value="1">
                         <div class="grid md:gap-10 gap-4 md:grid-cols-2 grid-cols-1 mb-6">
                             <div class="text-left">
-                                <label class="block mb-1 text-base font-medium text-gray-900 dark:text-white">Business name</label>
-                                <input type="text" name="business_name" value="<?= $business_name ?>" class="box-border bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Account Number" autocomplete="off">
+                                <label class="block mb-1 text-base font-medium text-gray-900 dark:text-dark">Business name</label>
+                                <input type="text" name="business_name" value="<?= $business_name ?>" class="box-border bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-dark dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Account Number" autocomplete="off">
                                 <?php if (isset($errors['business_name'])): ?>
                                     <p class="validation-error text-justify text-[#FF0000] text-sm mt-1"><?= $errors['business_name'] ?></p>
                                 <?php endif; ?>
                             </div>
                             <div class="text-left">
                                 <label class="block mb-1 text-base font-medium text-gray-900 dark:text-white">Business email</label>
-                                <input type="email" name="business_email" value="<?= $business_email ?>" class="box-border bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Enter information here" autocomplete="off">
+                                <input type="email" name="business_email" value="<?= $business_email ?>" class="box-border bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-dark dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Enter information here" autocomplete="off">
                                 <?php if (isset($errors['business_email'])): ?>
                                     <p class="validation-error text-justify text-[#FF0000] text-sm mt-1"><?= $errors['business_email'] ?></p>
                                 <?php endif; ?>
@@ -141,15 +121,15 @@ get_header();
                         </div>
                         <div class="grid md:gap-10 gap-4 md:grid-cols-2 grid-cols-1 mb-6">
                             <div class="text-left">
-                                <label class="block mb-1 text-base font-medium text-gray-900 dark:text-white">Business network</label>
-                                <input type="text" name="business_network" value="<?= $business_network ?>" class="box-border bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Enter information here" autocomplete="off">
+                                <label class="block mb-1 text-base font-medium text-gray-900 dark:text-dark">Business network</label>
+                                <input type="text" name="business_network" value="<?= $business_network ?>" class="box-border bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-dark dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Enter information here" autocomplete="off">
                                 <?php if (isset($errors['business_network'])): ?>
                                     <p class="validation-error text-justify text-[#FF0000] text-sm mt-1"><?= $errors['business_network'] ?></p>
                                 <?php endif; ?>
                             </div>
                             <div class="text-left">
-                                <label class="block mb-1 text-base font-medium text-gray-900 dark:text-white">Business website</label>
-                                <input type="text" name="business_website" value="<?= $business_website ?>" class="box-border bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Enter information here" autocomplete="off">
+                                <label class="block mb-1 text-base font-medium text-gray-900 dark:text-dark">Business website</label>
+                                <input type="text" name="business_website" value="<?= $business_website ?>" class="box-border bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-dark dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Enter information here" autocomplete="off">
                                 <?php if (isset($errors['business_website'])): ?>
                                     <p class="validation-error text-justify text-[#FF0000] text-sm mt-1"><?= $errors['business_website'] ?></p>
                                 <?php endif; ?>
@@ -157,8 +137,8 @@ get_header();
                         </div>
                         <div class="grid md:gap-10 gap-4 md:grid-cols-2 grid-cols-1 mb-10">
                             <div class="text-left">
-                                <label class="block mb-1 text-base font-medium text-gray-900 dark:text-white">How you plan to sell our products</label>
-                                <textarea name="plan" class="box-border bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500 resize-none" placeholder="How you plan to sell our products" id="plan-to-sell" rows="3"><?= $plan ?></textarea>
+                                <label class="block mb-1 text-base font-medium text-gray-900 dark:text-dark">How you plan to sell our products</label>
+                                <textarea name="plan" class="box-border bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-dark dark:focus:ring-blue-500 dark:focus:border-blue-500 resize-none" placeholder="How you plan to sell our products" id="plan-to-sell" rows="3"><?= $plan ?></textarea>
                                 <?php if (isset($errors['plan'])): ?>
                                     <p class="validation-error text-justify text-[#FF0000] text-sm mt-1"><?= $errors['plan'] ?></p>
                                 <?php endif; ?>

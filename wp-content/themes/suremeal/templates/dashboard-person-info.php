@@ -133,8 +133,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
         $update_data = [
             'first_name' => $first_name,
             'last_name' => $last_name,
-            'addresses' => json_encode($addresses),
-            'avatar' => $avatar
+            'addresses' => json_encode($addresses)
+//            'avatar' => $avatar
         ];
 
         // Cập nhật email nếu chưa có
@@ -195,9 +195,9 @@ get_header();
                 <div class="w-full lg:max-w-[322px] flex flex-col gap-5">
                     <!-- profile card -->
                     <div  class="h-[200px] bg-secondary rounded-xl flex flex-col items-center justify-center gap-4">
-                        <figure class="w-20 h-20 rounded-full overflow-hidden">
-                            <img src="<?= $avatar ? $avatar : $url . '/assets/image/dashboard/avatar-80.svg' ?>" alt="avatar">
-                        </figure>
+<!--                        <figure class="w-20 h-20 rounded-full overflow-hidden">-->
+<!--                            <img src="--><?//= $avatar ? $avatar : $url . '/assets/image/dashboard/avatar-80.svg' ?><!--" alt="avatar">-->
+<!--                        </figure>-->
                         <div class="flex flex-col items-center justify-center">
                             <h2 class="text-body-md-semibold text-white"><?= $first_name ?> <?= $last_name ?></h2>
                             <p class="text-body-sm-regular text-white"><?= $user_email ?>
@@ -262,8 +262,8 @@ get_header();
                             <!-- thông tin - xem -->
                             <div
                                 class="view-info w-full max-w-[455px] px-4 lg:px-0 flex flex-col items-center justify-center gap-8">
-                                <figure class="w-20 h-20 rounded-full overflow-hidden"><img
-                                        src="<?= $avatar ? $avatar : $url . '/assets/image/dashboard/avatar-80.svg' ?>" alt="avatar"></figure>
+<!--                                <figure class="w-20 h-20 rounded-full overflow-hidden"><img-->
+<!--                                        src="--><?//= $avatar ? $avatar : $url . '/assets/image/dashboard/avatar-80.svg' ?><!--" alt="avatar"></figure>-->
                                 <div class="w-full">
                                     <div
                                         class="name-info w-full flex py-4 border-b border-solid border-neutral-200">

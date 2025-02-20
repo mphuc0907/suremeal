@@ -10,7 +10,13 @@ $addresses = $queryCustomers[0]->addresses;
 $first_name = $queryCustomers[0]->first_name;
 $last_name = $queryCustomers[0]->last_name;
 $email = $queryCustomers[0]->email;
-$phone_number = $queryCustomers[0]->phone_number;
+$phone_number = $queryCustomers[0]->phone;
+$status = $queryCustomers[0]->status;
+$business_name = $queryCustomers[0]->business_name;
+$business_email = $queryCustomers[0]->business_email;
+$business_network = $queryCustomers[0]->business_network;
+$business_website = $queryCustomers[0]->business_website;
+$plan = $queryCustomers[0]->plan;
 $avatar = $queryCustomers[0]->avatar;
 $provider = $queryCustomers[0]->provider;
 
@@ -45,6 +51,10 @@ $discountList = $wpdb->get_results("SELECT * FROM wp_discount_dealer WHERE id_de
 <style>
     input, select {
         width: 100%;
+    }
+
+    select {
+        max-width: 15rem !important;
     }
 
     .d-none {
@@ -120,9 +130,6 @@ $discountList = $wpdb->get_results("SELECT * FROM wp_discount_dealer WHERE id_de
     .order-item-product .order-detail{
         border-bottom: 1px solid #d9d9d9;
         padding-bottom: 25px;
-    }
-    .order-item-product .order-detail .list-product{
-
     }
     .order-item-product .order-detail .list-product .morth-item{
         display: flex;
@@ -302,11 +309,12 @@ $discountList = $wpdb->get_results("SELECT * FROM wp_discount_dealer WHERE id_de
     #submit-form {
         position: absolute;
         bottom: 0;
-        left: 48%;
-        right: 48%;
+        left: 46%;
+        right: 46%;
         padding: 6px;
         border-radius: 10px;
         cursor: pointer;
+        padding: 2px 8px;
     }
     #submit-form:hover {
         background: #000;
@@ -367,9 +375,9 @@ $discountList = $wpdb->get_results("SELECT * FROM wp_discount_dealer WHERE id_de
                                     <div class="list-product">
                                             <div class="morth-item">
                                                 <div class="morth-img">
-                                                    <figure>
-                                                        <img class="avatar" src="<?= $avatar ? $avatar : $url . '/assets/image/dashboard/avatar-80.svg' ?>" alt="">
-                                                    </figure>
+<!--                                                    <figure>-->
+<!--                                                        <img class="avatar" src="--><?//= $avatar ? $avatar : $url . '/assets/image/dashboard/avatar-80.svg' ?><!--" alt="">-->
+<!--                                                    </figure>-->
                                                     <div class="info">
                                                         <h4><?= $first_name ?> <?= $last_name ?></h4>
 
@@ -403,10 +411,17 @@ $discountList = $wpdb->get_results("SELECT * FROM wp_discount_dealer WHERE id_de
                                                     <span>Phone number:</span>
                                                     <strong><?= $phone_number ?></strong>
                                                 </li>
+
+                                                <li>
+                                                    <span>Status:</span>
+                                                    <strong><?= $status == 1 ? 'Activated' : 'Unactivated' ?></strong>
+                                                </li>
+
                                                 <li>
                                                     <span>Total Order:</span>
                                                     <strong><?= $totalOrders ?></strong>
                                                 </li>
+
                                                     <?php
                                                     $stored_addresses = json_decode($addresses, true) ?: [];
 
@@ -417,6 +432,30 @@ $discountList = $wpdb->get_results("SELECT * FROM wp_discount_dealer WHERE id_de
                                                             <strong><?= htmlspecialchars($address) ?></strong>
                                                         </li>
                                                     <?php endforeach ?>
+                                                <li>
+                                                    <span>Business name:</span>
+                                                    <strong><?= $business_name ?></strong>
+                                                </li>
+
+                                                <li>
+                                                    <span>Business email:</span>
+                                                    <strong><?= $business_email ?></strong>
+                                                </li>
+
+                                                <li>
+                                                    <span>Business network:</span>
+                                                    <strong><?= $business_network ?></strong>
+                                                </li>
+
+                                                <li>
+                                                    <span>Business website:</span>
+                                                    <strong><?= $business_website ?></strong>
+                                                </li>
+
+                                                <li>
+                                                    <span>Plan:</span>
+                                                    <strong><?= $plan ?></strong>
+                                                </li>
                                             </ul>
                                         </div>
                                     </div>
@@ -436,7 +475,7 @@ $discountList = $wpdb->get_results("SELECT * FROM wp_discount_dealer WHERE id_de
                     <tr class="headline">
                         <th style="width:30px;text-align:center;">No.</th>
                         <th>Order Code</th>
-                        <th>Discount Code</th>
+<!--                        <th>Discount Code</th>-->
                         <th>Order Date</th>
                         <th>Payment Method</th>
                         <th>Total Amount</th>
@@ -454,7 +493,7 @@ $discountList = $wpdb->get_results("SELECT * FROM wp_discount_dealer WHERE id_de
                     <tr>
                         <td><?= $i ?></td>
                         <td><a href="<?php echo $rowlink; ?>" target="_blank"><?= $order->order_code ?></a></td>
-                        <td><a href="<?php echo $rowlinkvoucher ?>"><?= $order->code_voucher ?></a></td>
+<!--                        <td><a href="--><?php //echo $rowlinkvoucher ?><!--">--><?//= $order->code_voucher ?><!--</a></td>-->
                         <td><?= date('H:i d/m/Y', $order->time_order) ?></td>
                         <td>    Stripe
                         <td><?= formatBalance($order->price_payment) ?> </td>
@@ -500,7 +539,7 @@ $discountList = $wpdb->get_results("SELECT * FROM wp_discount_dealer WHERE id_de
                                 <?php if($item->discount_type == '0'): ?>
                                     <?= $item->discount_amount ?>
                                 <?php elseif($item->discount_type == '1'): ?>
-                                    <?= $item->discount_amount ?> %
+                                    <?= intval($item->discount_amount) ?> %
                                 <?php endif; ?>
                             </td>
                             <td>
@@ -540,13 +579,14 @@ $discountList = $wpdb->get_results("SELECT * FROM wp_discount_dealer WHERE id_de
                                 <div class="item-1">
                                     <label for="">Discount type:</label>
                                     <select name="discount_type[]" id="">
-                                        <option value="0" <?php echo ($item->discount_type == '0') ? 'selected' : ''; ?>>Amount</option>
-                                        <option value="1" <?php echo ($item->discount_type == '1') ? 'selected' : ''; ?>>Percent</option>
+                                        <option value="0" <?= ($item->discount_type == '0') ? 'selected' : ''; ?>>Amount</option>
+                                        <option value="1" <?= ($item->discount_type == '1') ? 'selected' : ''; ?>>Percent</option>
                                     </select>
                                 </div>
                                 <div class="item-1">
                                     <label for="">Discount:</label>
-                                    <input type="text" name="discount_amount[]" value="<?php echo $item->discount_amount; ?>">
+                                    <input type="text" name="discount_amount[]"
+                                     value="<?= ($item->discount_type == '0') ? $item->discount_amount : intval($item->discount_amount); ?>">
                                 </div>
                             </div>
                             <button class="remove-form-group">

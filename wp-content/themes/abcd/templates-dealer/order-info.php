@@ -1,7 +1,7 @@
 <?php /* Template Name: Dealer-Order-Info */ ?>
 <?php
 $authenticated_dealer = validate_dealer_token();
-if (!isset($_COOKIE['dealer_token']) || !$authenticated_dealer) {
+if (!(isset($_COOKIE['dealer_token']) && $authenticated_dealer)) {
     wp_redirect(home_url());
     exit;
 }
@@ -16,7 +16,6 @@ $last_name = $authenticated_dealer->last_name;
 $avatar = $authenticated_dealer->avatar;
 $addresses = json_decode($authenticated_dealer->addresses, true) ?: [];
 $provider = $authenticated_dealer->provider;
-$status = $authenticated_dealer->status;
 $id = $authenticated_dealer->ID;
 // Lấy thông tin người dùng từ session
 $addresses = json_decode($_SESSION['addresses'], true);
@@ -60,13 +59,14 @@ $url = get_template_directory_uri();
 
 if (!empty($searchOrder)) {
     $myrows = $wpdb->get_results(
-        "SELECT * FROM wp_orders WHERE id_dealer = " . intval($id) . " AND order_code = '" . esc_sql($searchOrder) . "' ORDER BY id DESC"
+        $wpdb->prepare(
+            "SELECT * FROM wp_orders WHERE id_dealer = %d AND order_code LIKE %s ORDER BY id DESC",
+            intval($id),
+            '%' . $wpdb->esc_like($searchOrder) . '%'
+        )
     );
-
-
-}else {
+} else {
     $myrows = $wpdb->get_results("SELECT * FROM wp_orders WHERE id_dealer =" . $id . " ORDER BY id DESC");
-
 }
 
 $countmyrows = count($myrows);
@@ -118,45 +118,26 @@ get_header();
     <div class="grid 2xl:grid-cols-7 xl:grid-cols-7 md:grid-cols-8 sm:grid-cols-1 grid-cols-1 gap-0">
         <div class="flex items-start col-span-1 2xl:col-span-1 xl:col-span-1 md:col-span-2 grid bg-white md:h-screen height-full">
             <ul class="list-none pl-0 text-left mt-0 memubar" x-data="{ top: false }">
-                <li class="flex items-center pt-4 pb-4 pl-6 item-f dashboard">
-                <a class="flex items-center no-underline" href="<?= home_url() ?>/dealer-dashboard"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/cuida.png" alt=""><img class="mr-3 w-6 active hidden" src="<?= $url ?>/assets/dealer/img/cuida_ac.png" alt=""><span class="menu-item">Dashboard</span></a>
-                </li>
                 <li class="flex items-center pt-4 pb-4 pl-6 item-f my-order checkout-menu-active">
-                <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/dealer-order-info"><img class="mr-3 w-6 active" src="<?= $url ?>/assets/dealer/img/cart_ac.png " alt=""><span class="menu-item">My orders</span></a>
+                    <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/dealer-order-info"><img class="mr-3 w-6 active" src="<?= $url ?>/assets/dealer/img/cart_ac.png " alt=""><span class="menu-item">My orders</span></a>
                 </li>
-                <?php if($status == 2): ?>
-                    <li class="flex items-center pt-4 pb-4 pl-6 item-f management">
-                    <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/dealer-affiliate-order"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/tabler_shopping-bag-discount.png" alt=""><img class="mr-3 w-6 active hidden" src="<?= $url ?>/assets/dealer/img/tabler_shopping-bag-discount_ac.png" alt=""><span class="menu-item">Affiliate orders</span></a>
-                    </li>
-                    <li class="flex items-center pt-4 pb-4 pl-6 item-f management">
-                    <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/dealer-affiliate-customization"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/material-symbols_link.png" alt=""><img class="mr-3 w-6 hidden active" src="<?= $url ?>/assets/dealer/img/material-symbols_link_ac.png" alt=""><span class="menu-item">Affiliate link<br>customization</span></a>
-                    </li>
-                    <li class="flex items-center pt-4 pb-4 pl-6 item-f management">
-                    <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/point-management"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/reward.png" alt=""><img class="mr-3 w-6 hidden active" src="<?= $url ?>/assets/dealer/img/reward_ac.png" alt=""><span class="menu-item">Point management</span></a>
-                    </li>
-                <?php endif; ?>
-                <li class="pt-4 pb-4 pl-6 item-f account" >
-                <div class="flex items-center no-underline w-full" href="" x-on:click="top = ! top"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/circle.png" alt=""><img class="mr-3 w-6 hidden active" src="<?= $url ?>/assets/dealer/img/circle_ac.png" alt="">
-                    <span class="menu-item cursor-pointer">Account<br>information</span>
-                    <div class="order-2 ml-auto mr-4">
-                        <img class="w-6" :src="top ? '<?= $url ?>/assets/dealer/img/icon_down.png' : '<?= $url ?>/assets/dealer/img/icon_up.png'"  alt="">
+                <li class="pt-4 pb-4 pl-6 item-f account">
+                    <div class="flex items-center no-underline w-full" href="" x-on:click="top = ! top"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/circle.png" alt=""><img class="mr-3 w-6 hidden active" src="<?= $url ?>/assets/dealer/img/circle_ac.png" alt="">
+                        <span class="menu-item cursor-pointer">Account<br>information</span>
+                        <div class="order-2 ml-auto mr-4">
+                            <img class="w-6" :src="top ? '<?= $url ?>/assets/dealer/img/icon_down.png' : '<?= $url ?>/assets/dealer/img/icon_up.png'" alt="">
+                        </div>
                     </div>
-                </div>
                 </li>
                 <li class="pl-6">
-                <ul class="list-none" x-show="top">
-                    <li class="mt-2">
-                        <a class="no-underline text-sm" href="<?= home_url() ?>/dealer-personal-informmation">Personal information</a>
-                    </li>
-                    <li class="mt-2">
-                        <a class="no-underline text-sm" href="<?= home_url() ?>/dealer-business-informmation">Business information</a>
-                    </li>
-                    <?php if($status == 2): ?>
+                    <ul class="list-none" x-show="top">
                         <li class="mt-2">
-                            <a class="no-underline text-sm" href="<?= home_url() ?>/dealer-bank-informmation">Bank account information</a>
+                            <a class="no-underline text-sm" href="<?= home_url() ?>/dealer-personal-informmation">Personal information</a>
                         </li>
-                    <?php endif; ?>
-                </ul>
+                        <li class="mt-2">
+                            <a class="no-underline text-sm" href="<?= home_url() ?>/dealer-business-informmation">Business information</a>
+                        </li>
+                    </ul>
                 </li>
             </ul>
         </div>
@@ -164,24 +145,28 @@ get_header();
             <div class="mx-auto relative w-1192-full overflow-hidden border-cm">
                 <div class="flex flex-col lg:flex-row gap-6 items-center justify-between">
                     <h2 class="text-heading-h5 text-gray-8"><?php pll_e('My orders') ?></h2>
-                    <form action="" id="searchOrder">
-                    <input type="text" name="searchOrder" value="<?= $searchOrder ?>" class="home-search radius-8 xl:max-w-[200px] 2xl:max-w-[386px]"
-                        placeholder="<?php pll_e('Search by order code') ?>">
+
+                    <form id="searchOrder" class="relative w-full xl:max-w-[200px] 2xl:max-w-[386px]">
+                        <input type="text" name="searchOrder" value="<?= $searchOrder ?>" class="home-search no-bg radius-8"
+                            placeholder="<?php pll_e('Search by order code') ?>">
+                        <button class="button bg-trans absolute right-6 top-[50%] translate-y-[-50%]" type="submit">
+                            <figure class="w-4 h-4"><img src="<?= $url ?>/assets/image/icon/mag-glass.svg" alt=""></figure>
+                        </button>
                     </form>
                 </div>
 
                 <div class="mt-4 rounded-t-xl bg-white flex pt-2 items-center">
                     <div class="max-w-full overflow-x-auto custom-scrollbar">
-                        <div class="grid grid-cols-[repeat(5,minmax(202px,1fr))]">
+                        <div class="grid grid-cols-[repeat(4,minmax(297px,1fr))]">
                             <div class="order-tab-item active" data-tab-id="all">
                                 <p class="text-body-md-regular"><?php pll_e('All') ?> (<?= $countmyrows ?>)</p>
                             </div>
                             <div class="order-tab-item" data-tab-id="processing">
                                 <p class="text-body-md-regular"><?php pll_e('Processing') ?> (<?= $countOrder ?>)</p>
                             </div>
-                            <div class="order-tab-item" data-tab-id="in-progress">
+                            <!-- <div class="order-tab-item" data-tab-id="in-progress">
                                 <p class="text-body-md-regular"><?php pll_e('In progress') ?> (<?= $countpackaging ?>)</p>
-                            </div>
+                            </div> -->
                             <div class="order-tab-item" data-tab-id="completed">
                                 <p class="text-body-md-regular"><?php pll_e('Completed') ?> (<?= $countroad ?>)</p>
                             </div>
@@ -219,7 +204,7 @@ get_header();
                             $class = 'warning';
                             $name = 'In progress';
                         }
-                        
+
                         // Get dealer discount if dealer is logged in
                         $dealer_discount = get_dealer_discount($dealer_id, $idPro);
 
@@ -248,21 +233,21 @@ get_header();
                                     <div class="flex items-center gap-2">
                                         <p class="text-body-md-medium text-gray-8"><?php pll_e('Order code') ?>:</p>
                                         <p class="text-body-md-medium text-neutral-500"><?= $value->order_code ?></p>
-                                        <input type="text" value="<?= $value->order_code ?>" id="myInput<?= $value->order_code ?>" style="display: none">
-                                        <button class="button button-trans p-0"  onclick="myFunction('myInput<?= $value->order_code ?>')">
+                                        <input type="text" value="<?= $value->order_code ?>" id="myInput_all<?= $value->order_code ?>" style="display: none">
+                                        <button class="button button-trans p-0" onclick="myFunction('myInput_all<?= $value->order_code ?>')">
                                             <figure class="w-5 h-5"><img src="<?= $url ?>/assets/image/icon/duplicate.svg"
-                                                                            alt="icon">
+                                                    alt="icon">
                                             </figure>
                                         </button>
                                     </div>
                                     <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
-                                    <p class="text-body-md-medium text-neutral-500" ><?php pll_e('Deliver') ?></p>
+                                    <p class="text-body-md-medium text-neutral-500"><?php pll_e('Deliver') ?></p>
                                     <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
                                     <p class="text-body-md-medium text-neutral-500"><?= $countProduct ?> <?php pll_e('products') ?></p>
                                     <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
-                                    <div class="flex items-center gap-2">
-                                        <a href="/pdf/?order_code=<?= $value->order_code ?>" target="_blank" class="text-body-md-medium text-neutral-500">Receipt</a>
-                                        <button class="button bg-trans" onclick="window.open('/pdf/?order_code=' . <?= $value->order_code ?>, '_blank')">
+                                    <a href="/pdf/?order_code=<?= $value->order_code ?>" target="_blank" class="flex items-center gap-2">
+                                        <div class="text-body-md-medium text-neutral-500">Receipt</div>
+                                        <button class="button bg-trans">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="20"
                                                     viewBox="0 0 16 20" fill="none">
                                                 <path
@@ -271,7 +256,7 @@ get_header();
                                                         stroke-linejoin="round" />
                                             </svg>
                                         </button>
-                                    </div>
+                                    </a>
                                 </div>
 
                                 <div class="badge <?= $class ?>">
@@ -281,35 +266,28 @@ get_header();
 
                             <div class="w-full py-6 px-8 flex flex-col gap-3 border-b border-solid border-neutral-200">
                                 <!-- product -->
-                                <div class="w-full flex flex-wrap lg:flex-nowrap justify-between items-center">
-                                    <div class="flex lg:flex-0 w-full md:w-2/3 max-w-[653px] items-center gap-5">
-                                        <figure
-                                            class="w-[60px] h-[60px] md:w-[100px] md:h-[100px] rounded-xl border border-solid border-neutral-200">
-                                            <img src="<?= $decodedData[0]['img'] ?>" alt="item">
-                                        </figure>
-                                        <div class="flex-1 flex flex-col gap-2">
-                                            <h2 class="text-body-md-medium text-gray-8 truncate-2row"><?= $decodedData[0]['title'] ?></h2>
-                                            <div class="neutral-200 text-body-sm-regular text-gray-7">
-                                                <?php pll_e('Type') ?>: <?= get_field('quantity', $idPro) ?> <?php pll_e('Pack') ?>
+                                <?php foreach ($decodedData as $key => $item):
+                                    $idPro = $item['id'];
+                                ?>
+                                    <div class="w-full flex flex-wrap lg:flex-nowrap justify-between items-center">
+                                        <div class="flex lg:flex-0 w-full md:w-2/3 max-w-[653px] items-center gap-5">
+                                            <figure
+                                                class="w-[60px] h-[60px] md:w-[100px] md:h-[100px] rounded-xl border border-solid border-neutral-200">
+                                                <img src="<?= $item['img'] ?>" alt="item">
+                                            </figure>
+                                            <div class="flex-1 flex flex-col gap-2">
+                                                <h2 class="text-body-md-medium text-gray-8 truncate-2row self-start"><?= $item['title'] ?></h2>
+                                                <div class="neutral-200 text-body-sm-regular text-gray-7">
+                                                    <?php pll_e('Type') ?>: <?= $item['pack'] ?> <?php pll_e('Pack') ?>
+                                                </div>
                                             </div>
                                         </div>
+                                        <p class="text-body-md-regular text-gray-8"><?php pll_e('Quantity') ?>: <?= $item['qty'] ?></p>
+                                        <div class="flex flex-col items-end justify-end gap-1">
+                                            <p class="text-body-sm-regular text-neutral-500"><?= formatBalance($item['price']) ?></p>
+                                        </div>
                                     </div>
-                                    <p class="text-body-md-regular text-gray-8"><?php pll_e('Quantity') ?>: <?= $decodedData[0]['qty'] ?></p>
-                                    <?php if ($final_price < $price): ?>
-                                        <div class="flex flex-col items-end justify-end gap-1">
-                                            <p class="text-body-md-medium text-gray-8"><?= formatBalance($final_price) ?> </p>
-                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="flex flex-col items-end justify-end gap-1">
-<<<<<<< HEAD
-                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
-=======
-                                            <p class="text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
->>>>>>> 92ca8f6acf5256fb4eda0fc1ac4ef5953356b33f
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
+                                <?php endforeach ?>
 
                                 <!-- total -->
                                 <div class="flex items-center justify-between">
@@ -358,7 +336,7 @@ get_header();
                             $class = 'warning';
                             $name = 'In progress';
                         }
-                        
+
                         // Get dealer discount if dealer is logged in
                         $dealer_discount = get_dealer_discount($dealer_id, $idPro);
 
@@ -387,10 +365,10 @@ get_header();
                                     <div class="flex items-center gap-2">
                                         <p class="text-body-md-medium text-gray-8"><?php pll_e('Order code') ?>:</p>
                                         <p class="text-body-md-medium text-neutral-500"><?= $value->order_code ?></p>
-                                        <input type="text" value="<?= $value->order_code ?>" id="myInput<?= $value->order_code ?>" style="display: none">
-                                        <button class="button button-trans p-0"  onclick="myFunction('myInput<?= $value->order_code ?>')">
+                                        <input type="text" value="<?= $value->order_code ?>" id="myInput_processing<?= $value->order_code ?>" style="display: none">
+                                        <button class="button button-trans p-0" onclick="myFunction('myInput_processing<?= $value->order_code ?>')">
                                             <figure class="w-5 h-5"><img src="<?= $url ?>/assets/image/icon/duplicate.svg"
-                                                                            alt="icon">
+                                                    alt="icon">
                                             </figure>
                                         </button>
                                     </div>
@@ -399,9 +377,9 @@ get_header();
                                     <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
                                     <p class="text-body-md-medium text-neutral-500"><?= $countProduct ?> <?php pll_e('products') ?></p>
                                     <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
-                                    <div class="flex items-center gap-2">
-                                        <a href="/pdf/?order_code=<?= $value->order_code ?>" target="_blank" class="text-body-md-medium text-neutral-500">Receipt</a>
-                                        <button class="button bg-trans" onclick="window.open('/pdf/?order_code=' . <?= $value->order_code ?>, '_blank')">
+                                    <a href="/pdf/?order_code=<?= $value->order_code ?>" target="_blank" class="flex items-center gap-2">
+                                        <div class="text-body-md-medium text-neutral-500">Receipt</div>
+                                        <button class="button bg-trans">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="20"
                                                     viewBox="0 0 16 20" fill="none">
                                                 <path
@@ -410,7 +388,7 @@ get_header();
                                                         stroke-linejoin="round" />
                                             </svg>
                                         </button>
-                                    </div>
+                                    </a>
                                 </div>
 
                                 <div class="badge <?= $class ?>">
@@ -420,35 +398,28 @@ get_header();
 
                             <div class="w-full py-6 px-8 flex flex-col gap-3 border-b border-solid border-neutral-200">
                                 <!-- product -->
-                                <div class="w-full flex flex-wrap lg:flex-nowrap justify-between items-center">
-                                    <div class="flex lg:flex-0 w-full md:w-2/3 max-w-[653px] items-center gap-5">
-                                        <figure
-                                            class="w-[60px] h-[60px] md:w-[100px] md:h-[100px] rounded-xl border border-solid border-neutral-200">
-                                            <img src="<?= $decodedData[0]['img'] ?>" alt="item">
-                                        </figure>
-                                        <div class="flex-1 flex flex-col gap-2">
-                                            <h2 class="text-body-md-medium text-gray-8 truncate-2row"><?= $decodedData[0]['title'] ?></h2>
-                                            <div class="neutral-200 text-body-sm-regular text-gray-7">
-                                                <?php pll_e('Type') ?>: <?= get_field('quantity', $idPro) ?> <?php pll_e('Pack') ?>
+                                <?php foreach ($decodedData as $key => $item):
+                                    $idPro = $item['id'];
+                                ?>
+                                    <div class="w-full flex flex-wrap lg:flex-nowrap justify-between items-center">
+                                        <div class="flex lg:flex-0 w-full md:w-2/3 max-w-[653px] items-center gap-5">
+                                            <figure
+                                                class="w-[60px] h-[60px] md:w-[100px] md:h-[100px] rounded-xl border border-solid border-neutral-200">
+                                                <img src="<?= $item['img'] ?>" alt="item">
+                                            </figure>
+                                            <div class="flex-1 flex flex-col gap-2">
+                                                <h2 class="text-body-md-medium text-gray-8 truncate-2row self-start"><?= $item['title'] ?></h2>
+                                                <div class="neutral-200 text-body-sm-regular text-gray-7">
+                                                    <?php pll_e('Type') ?>: <?= $item['pack'] ?> <?php pll_e('Pack') ?>
+                                                </div>
                                             </div>
                                         </div>
+                                        <p class="text-body-md-regular text-gray-8"><?php pll_e('Quantity') ?>: <?= $item['qty'] ?></p>
+                                        <div class="flex flex-col items-end justify-end gap-1">
+                                            <p class="text-body-sm-regular text-neutral-500"><?= formatBalance($item['price']) ?></p>
+                                        </div>
                                     </div>
-                                    <p class="text-body-md-regular text-gray-8"><?php pll_e('Quantity') ?>: <?= $decodedData[0]['qty'] ?></p>
-                                    <?php if ($final_price < $price): ?>
-                                        <div class="flex flex-col items-end justify-end gap-1">
-                                            <p class="text-body-md-medium text-gray-8"><?= formatBalance($final_price) ?> </p>
-                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="flex flex-col items-end justify-end gap-1">
-<<<<<<< HEAD
-                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
-=======
-                                            <p class="text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
->>>>>>> 92ca8f6acf5256fb4eda0fc1ac4ef5953356b33f
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
+                                <?php endforeach ?>
 
                                 <!-- total -->
                                 <div class="flex items-center justify-between">
@@ -470,7 +441,7 @@ get_header();
                         </div>
                     <?php endforeach; ?>
                 </div>
-                <div class="mt-3 flex flex-col gap-6 order-tab" data-tab-id="in-progress">
+                <!-- <div class="mt-3 flex flex-col gap-6 order-tab" data-tab-id="in-progress">
                     <?php foreach ($packaging as $key => $value) :
 
                         $get_newest_order = $wpdb->get_results("SELECT * FROM wp_orders WHERE order_code = '{$value->order_code}' ORDER BY id DESC");
@@ -497,7 +468,7 @@ get_header();
                             $class = 'warning';
                             $name = pll__('In progress');
                         }
-                        
+
                         // Get dealer discount if dealer is logged in
                         $dealer_discount = get_dealer_discount($dealer_id, $idPro);
 
@@ -526,10 +497,10 @@ get_header();
                                     <div class="flex items-center gap-2">
                                         <p class="text-body-md-medium text-gray-8"><?php pll_e('Order code') ?>:</p>
                                         <p class="text-body-md-medium text-neutral-500"><?= $value->order_code ?></p>
-                                        <input type="text" value="<?= $value->order_code ?>" id="myInput<?= $value->order_code ?>" style="display: none">
-                                        <button class="button button-trans p-0"  onclick="myFunction('myInput<?= $value->order_code ?>')">
+                                        <input type="text" value="<?= $value->order_code ?>" id="myInput_in_progress<?= $value->order_code ?>" style="display: none">
+                                        <button class="button button-trans p-0" onclick="myFunction('myInput_in_progress<?= $value->order_code ?>')">
                                             <figure class="w-5 h-5"><img src="<?= $url ?>/assets/image/icon/duplicate.svg"
-                                                                            alt="icon">
+                                                    alt="icon">
                                             </figure>
                                         </button>
                                     </div>
@@ -538,9 +509,9 @@ get_header();
                                     <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
                                     <p class="text-body-md-medium text-neutral-500"><?= $countProduct ?> <?php pll_e('products') ?></p>
                                     <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
-                                    <div class="flex items-center gap-2">
-                                        <a href="/pdf/?order_code=<?= $value->order_code ?>" target="_blank" class="text-body-md-medium text-neutral-500">Receipt</a>
-                                        <button class="button bg-trans" onclick="window.open('/pdf/?order_code=' . <?= $value->order_code ?>, '_blank')">
+                                    <a href="/pdf/?order_code=<?= $value->order_code ?>" target="_blank" class="flex items-center gap-2">
+                                        <div class="text-body-md-medium text-neutral-500">Receipt</div>
+                                        <button class="button bg-trans">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="20"
                                                     viewBox="0 0 16 20" fill="none">
                                                 <path
@@ -549,7 +520,7 @@ get_header();
                                                         stroke-linejoin="round" />
                                             </svg>
                                         </button>
-                                    </div>
+                                    </a>
                                 </div>
 
                                 <div class="badge <?= $class ?>">
@@ -558,44 +529,38 @@ get_header();
                             </div>
 
                             <div class="w-full py-6 px-8 flex flex-col gap-3 border-b border-solid border-neutral-200">
-                                <!-- product -->
-                                <div class="w-full flex flex-wrap lg:flex-nowrap justify-between items-center">
-                                    <div class="flex lg:flex-0 w-full md:w-2/3 max-w-[653px] items-center gap-5">
-                                        <figure
-                                            class="w-[60px] h-[60px] md:w-[100px] md:h-[100px] rounded-xl border border-solid border-neutral-200">
-                                            <img src="<?= $decodedData[0]['img'] ?>" alt="item">
-                                        </figure>
-                                        <div class="flex-1 flex flex-col gap-2">
-                                            <h2 class="text-body-md-medium text-gray-8 truncate-2row"><?= $decodedData[0]['title'] ?></h2>
-                                            <div class="neutral-200 text-body-sm-regular text-gray-7">
-                                                <?php pll_e('Type') ?>: <?= get_field('quantity', $idPro) ?> <?php pll_e('Pack') ?>
+                                
+                                <?php foreach ($decodedData as $key => $item):
+                                    $idPro = $item['id'];
+                                ?>
+                                    <div class="w-full flex flex-wrap lg:flex-nowrap justify-between items-center">
+                                        <div class="flex lg:flex-0 w-full md:w-2/3 max-w-[653px] items-center gap-5">
+                                            <figure
+                                                class="w-[60px] h-[60px] md:w-[100px] md:h-[100px] rounded-xl border border-solid border-neutral-200">
+                                                <img src="<?= $item['img'] ?>" alt="item">
+                                            </figure>
+                                            <div class="flex-1 flex flex-col gap-2">
+                                                <h2 class="text-body-md-medium text-gray-8 truncate-2row self-start"><?= $item['title'] ?></h2>
+                                                <div class="neutral-200 text-body-sm-regular text-gray-7">
+                                                    <?php pll_e('Type') ?>: <?= $item['pack'] ?> <?php pll_e('Pack') ?>
+                                                </div>
                                             </div>
                                         </div>
+                                        <p class="text-body-md-regular text-gray-8"><?php pll_e('Quantity') ?>: <?= $item['qty'] ?></p>
+                                        <div class="flex flex-col items-end justify-end gap-1">
+                                            <p class="text-body-sm-regular text-neutral-500"><?= formatBalance($item['price']) ?></p>
+                                        </div>
                                     </div>
-                                    <p class="text-body-md-regular text-gray-8"><?php pll_e('Quantity') ?>: <?= $decodedData[0]['qty'] ?></p>
-                                    <?php if ($final_price < $price): ?>
-                                        <div class="flex flex-col items-end justify-end gap-1">
-                                            <p class="text-body-md-medium text-gray-8"><?= formatBalance($final_price) ?> </p>
-                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="flex flex-col items-end justify-end gap-1">
-<<<<<<< HEAD
-                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
-=======
-                                            <p class="text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
->>>>>>> 92ca8f6acf5256fb4eda0fc1ac4ef5953356b33f
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
+                                <?php endforeach ?>
 
-                                <!-- total -->
                                 <div class="flex items-center justify-between">
                                     <a href="/dealer-order-detail/?order_code=<?= $value->order_code ?>" class="button button-trans p-0 text-body-md-semibold text-secondary">
                                         <?php pll_e('View details') ?>
-                                        <figure><img src="<?= $url ?>/assets/image/icon/chev-right-24-second.svg"
-                                                alt="icon">
-                                        </figure>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <g id="Outline / Arrows / Alt Arrow Right">
+                                                <path id="Vector (Stroke)" fill-rule="evenodd" clip-rule="evenodd" d="M8.51192 4.43057C8.82641 4.161 9.29989 4.19743 9.56946 4.51192L15.5695 11.5119C15.8102 11.7928 15.8102 12.2072 15.5695 12.4881L9.56946 19.4881C9.29989 19.8026 8.82641 19.839 8.51192 19.5695C8.19743 19.2999 8.161 18.8264 8.43057 18.5119L14.0122 12L8.43057 5.48811C8.161 5.17361 8.19743 4.70014 8.51192 4.43057Z" fill="#0E74BC" />
+                                            </g>
+                                        </svg>
                                     </a>
 
                                     <div class="flex items-center gap-2">
@@ -606,7 +571,7 @@ get_header();
                             </div>
                         </div>
                     <?php endforeach; ?>
-                </div>
+                </div> -->
                 <div class="mt-3 flex flex-col gap-6 order-tab" data-tab-id="completed">
                     <?php foreach ($on_the_road as $key => $value) :
 
@@ -634,7 +599,7 @@ get_header();
                             $class = 'warning';
                             $name = 'In progress';
                         }
-                        
+
                         // Get dealer discount if dealer is logged in
                         $dealer_discount = get_dealer_discount($dealer_id, $idPro);
 
@@ -663,10 +628,10 @@ get_header();
                                     <div class="flex items-center gap-2">
                                         <p class="text-body-md-medium text-gray-8"><?php pll_e('Order code') ?>:</p>
                                         <p class="text-body-md-medium text-neutral-500 order_code"><?= $value->order_code ?></p>
-                                        <input type="text" value="<?= $value->order_code ?>" id="myInput<?= $value->order_code ?>" style="display: none">
-                                        <button class="button button-trans p-0"  onclick="myFunction('myInput<?= $value->order_code ?>')">
+                                        <input type="text" value="<?= $value->order_code ?>" id="myInput_completed<?= $value->order_code ?>" style="display: none">
+                                        <button class="button button-trans p-0" onclick="myFunction('myInput_completed<?= $value->order_code ?>')">
                                             <figure class="w-5 h-5"><img src="<?= $url ?>/assets/image/icon/duplicate.svg"
-                                                                            alt="icon">
+                                                    alt="icon">
                                             </figure>
                                         </button>
                                     </div>
@@ -675,9 +640,9 @@ get_header();
                                     <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
                                     <p class="text-body-md-medium text-neutral-500"><?= $countProduct ?> <?php pll_e('products') ?></p>
                                     <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
-                                    <div class="flex items-center gap-2">
-                                        <a href="/pdf/?order_code=<?= $value->order_code ?>" target="_blank" class="text-body-md-medium text-neutral-500">Receipt</a>
-                                        <button class="button bg-trans" onclick="window.open('/pdf/?order_code=' . <?= $value->order_code ?>, '_blank')">
+                                    <a href="/pdf/?order_code=<?= $value->order_code ?>" target="_blank" class="flex items-center gap-2">
+                                        <div class="text-body-md-medium text-neutral-500">Receipt</div>
+                                        <button class="button bg-trans">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="20"
                                                     viewBox="0 0 16 20" fill="none">
                                                 <path
@@ -686,7 +651,7 @@ get_header();
                                                         stroke-linejoin="round" />
                                             </svg>
                                         </button>
-                                    </div>
+                                    </a>
                                 </div>
 
                                 <div class="badge <?= $class ?>">
@@ -696,43 +661,38 @@ get_header();
 
                             <div class="w-full py-6 px-8 flex flex-col gap-3 border-b border-solid border-neutral-200">
                                 <!-- product -->
-                                <div class="w-full flex flex-wrap lg:flex-nowrap justify-between items-center">
-                                    <div class="flex lg:flex-0 w-full md:w-2/3 max-w-[653px] items-center gap-5">
-                                        <figure
-                                            class="w-[60px] h-[60px] md:w-[100px] md:h-[100px] rounded-xl border border-solid border-neutral-200">
-                                            <img src="<?= $decodedData[0]['img'] ?>" alt="item">
-                                        </figure>
-                                        <div class="flex-1 flex flex-col gap-2">
-                                            <h2 class="text-body-md-medium text-gray-8 truncate-2row"><?= $decodedData[0]['title'] ?></h2>
-                                            <div class="neutral-200 text-body-sm-regular text-gray-7">
-                                                <?php pll_e('Type') ?>: <?= get_field('quantity', $idPro) ?> <?php pll_e('Pack') ?>
+                                <?php foreach ($decodedData as $key => $item):
+                                    $idPro = $item['id'];
+                                ?>
+                                    <div class="w-full flex flex-wrap lg:flex-nowrap justify-between items-center">
+                                        <div class="flex lg:flex-0 w-full md:w-2/3 max-w-[653px] items-center gap-5">
+                                            <figure
+                                                class="w-[60px] h-[60px] md:w-[100px] md:h-[100px] rounded-xl border border-solid border-neutral-200">
+                                                <img src="<?= $item['img'] ?>" alt="item">
+                                            </figure>
+                                            <div class="flex-1 flex flex-col gap-2">
+                                                <h2 class="text-body-md-medium text-gray-8 truncate-2row self-start"><?= $item['title'] ?></h2>
+                                                <div class="neutral-200 text-body-sm-regular text-gray-7">
+                                                    <?php pll_e('Type') ?>: <?= $item['pack'] ?> <?php pll_e('Pack') ?>
+                                                </div>
                                             </div>
                                         </div>
+                                        <p class="text-body-md-regular text-gray-8"><?php pll_e('Quantity') ?>: <?= $item['qty'] ?></p>
+                                        <div class="flex flex-col items-end justify-end gap-1">
+                                            <p class="text-body-sm-regular text-neutral-500"><?= formatBalance($item['price']) ?></p>
+                                        </div>
                                     </div>
-                                    <p class="text-body-md-regular text-gray-8"><?php pll_e('Quantity') ?>: <?= $decodedData[0]['qty'] ?></p>
-                                    <?php if ($final_price < $price): ?>
-                                        <div class="flex flex-col items-end justify-end gap-1">
-                                            <p class="text-body-md-medium text-gray-8"><?= formatBalance($final_price) ?> </p>
-                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="flex flex-col items-end justify-end gap-1">
-<<<<<<< HEAD
-                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
-=======
-                                            <p class="text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
->>>>>>> 92ca8f6acf5256fb4eda0fc1ac4ef5953356b33f
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
+                                <?php endforeach ?>
 
                                 <!-- total -->
                                 <div class="flex items-center justify-between">
                                     <a href="/dealer-order-detail/?order_code=<?= $value->order_code ?>" class="button button-trans p-0 text-body-md-semibold text-secondary">
                                         <?php pll_e('View details') ?>
-                                        <figure><img src="<?= $url ?>/assets/image/icon/chev-right-24-second.svg"
-                                                alt="icon">
-                                        </figure>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <g id="Outline / Arrows / Alt Arrow Right">
+                                                <path id="Vector (Stroke)" fill-rule="evenodd" clip-rule="evenodd" d="M8.51192 4.43057C8.82641 4.161 9.29989 4.19743 9.56946 4.51192L15.5695 11.5119C15.8102 11.7928 15.8102 12.2072 15.5695 12.4881L9.56946 19.4881C9.29989 19.8026 8.82641 19.839 8.51192 19.5695C8.19743 19.2999 8.161 18.8264 8.43057 18.5119L14.0122 12L8.43057 5.48811C8.161 5.17361 8.19743 4.70014 8.51192 4.43057Z" fill="#0E74BC" />
+                                            </g>
+                                        </svg>
                                     </a>
 
                                     <div class="flex items-center gap-2">
@@ -771,7 +731,7 @@ get_header();
                             $class = 'warning';
                             $name = pll__('In progress');
                         }
-                        
+
                         // Get dealer discount if dealer is logged in
                         $dealer_discount = get_dealer_discount($dealer_id, $idPro);
 
@@ -800,10 +760,10 @@ get_header();
                                     <div class="flex items-center gap-2">
                                         <p class="text-body-md-medium text-gray-8"><?php pll_e('Order code') ?>:</p>
                                         <p class="text-body-md-medium text-neutral-500"><?= $value->order_code ?></p>
-                                        <input type="text" value="<?= $value->order_code ?>" id="myInput<?= $value->order_code ?>" style="display: none">
-                                        <button class="button button-trans p-0"  onclick="myFunction('myInput<?= $value->order_code ?>')">
+                                        <input type="text" value="<?= $value->order_code ?>" id="myInput_canceled<?= $value->order_code ?>" style="display: none">
+                                        <button class="button button-trans p-0" onclick="myFunction('myInput_canceled<?= $value->order_code ?>')">
                                             <figure class="w-5 h-5"><img src="<?= $url ?>/assets/image/icon/duplicate.svg"
-                                                                            alt="icon">
+                                                    alt="icon">
                                             </figure>
                                         </button>
                                     </div>
@@ -812,9 +772,9 @@ get_header();
                                     <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
                                     <p class="text-body-md-medium text-neutral-500"><?= $countProduct ?> <?php pll_e('products') ?></p>
                                     <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
-                                    <div class="flex items-center gap-2">
-                                        <a href="/pdf/?order_code=<?= $value->order_code ?>" target="_blank" class="text-body-md-medium text-neutral-500">Receipt</a>
-                                        <button class="button bg-trans" onclick="window.open('/pdf/?order_code=' . <?= $value->order_code ?>, '_blank')">
+                                    <a href="/pdf/?order_code=<?= $value->order_code ?>" target="_blank" class="flex items-center gap-2">
+                                        <div class="text-body-md-medium text-neutral-500">Receipt</div>
+                                        <button class="button bg-trans">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="20"
                                                     viewBox="0 0 16 20" fill="none">
                                                 <path
@@ -823,7 +783,7 @@ get_header();
                                                         stroke-linejoin="round" />
                                             </svg>
                                         </button>
-                                    </div>
+                                    </a>
                                 </div>
 
                                 <div class="badge <?= $class ?>">
@@ -833,43 +793,38 @@ get_header();
 
                             <div class="w-full py-6 px-8 flex flex-col gap-3 border-b border-solid border-neutral-200">
                                 <!-- product -->
-                                <div class="w-full flex flex-wrap lg:flex-nowrap justify-between items-center">
-                                    <div class="flex lg:flex-0 w-full md:w-2/3 max-w-[653px] items-center gap-5">
-                                        <figure
-                                            class="w-[60px] h-[60px] md:w-[100px] md:h-[100px] rounded-xl border border-solid border-neutral-200">
-                                            <img src="<?= $decodedData[0]['img'] ?>" alt="item">
-                                        </figure>
-                                        <div class="flex-1 flex flex-col gap-2">
-                                            <h2 class="text-body-md-medium text-gray-8 truncate-2row"><?= $decodedData[0]['title'] ?></h2>
-                                            <div class="neutral-200 text-body-sm-regular text-gray-7">
-                                                <?php pll_e('Type') ?>: <?= get_field('quantity', $idPro) ?> <?php pll_e('Pack') ?>
+                                <?php foreach ($decodedData as $key => $item):
+                                    $idPro = $item['id'];
+                                ?>
+                                    <div class="w-full flex flex-wrap lg:flex-nowrap justify-between items-center">
+                                        <div class="flex lg:flex-0 w-full md:w-2/3 max-w-[653px] items-center gap-5">
+                                            <figure
+                                                class="w-[60px] h-[60px] md:w-[100px] md:h-[100px] rounded-xl border border-solid border-neutral-200">
+                                                <img src="<?= $item['img'] ?>" alt="item">
+                                            </figure>
+                                            <div class="flex-1 flex flex-col gap-2">
+                                                <h2 class="text-body-md-medium text-gray-8 truncate-2row self-start"><?= $item['title'] ?></h2>
+                                                <div class="neutral-200 text-body-sm-regular text-gray-7">
+                                                    <?php pll_e('Type') ?>: <?= $item['pack'] ?> <?php pll_e('Pack') ?>
+                                                </div>
                                             </div>
                                         </div>
+                                        <p class="text-body-md-regular text-gray-8"><?php pll_e('Quantity') ?>: <?= $item['qty'] ?></p>
+                                        <div class="flex flex-col items-end justify-end gap-1">
+                                            <p class="text-body-sm-regular text-neutral-500"><?= formatBalance($item['price']) ?></p>
+                                        </div>
                                     </div>
-                                    <p class="text-body-md-regular text-gray-8"><?php pll_e('Quantity') ?>: <?= $decodedData[0]['qty'] ?></p>
-                                    <?php if ($final_price < $price): ?>
-                                        <div class="flex flex-col items-end justify-end gap-1">
-                                            <p class="text-body-md-medium text-gray-8"><?= formatBalance($final_price) ?> </p>
-                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="flex flex-col items-end justify-end gap-1">
-<<<<<<< HEAD
-                                            <p class="line-through text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
-=======
-                                            <p class="text-body-sm-regular text-neutral-500"><?= formatBalance($price) ?></p>
->>>>>>> 92ca8f6acf5256fb4eda0fc1ac4ef5953356b33f
-                                        </div>
-                                    <?php endif; ?>
-                                </div>
+                                <?php endforeach ?>
 
                                 <!-- total -->
                                 <div class="flex items-center justify-between">
                                     <a href="/dealer-order-detail/?order_code=<?= $value->order_code ?>" class="button button-trans p-0 text-body-md-semibold text-secondary">
                                         <?php pll_e('View details') ?>
-                                        <figure><img src="<?= $url ?>/assets/image/icon/chev-right-24-second.svg"
-                                                alt="icon">
-                                        </figure>
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <g id="Outline / Arrows / Alt Arrow Right">
+                                                <path id="Vector (Stroke)" fill-rule="evenodd" clip-rule="evenodd" d="M8.51192 4.43057C8.82641 4.161 9.29989 4.19743 9.56946 4.51192L15.5695 11.5119C15.8102 11.7928 15.8102 12.2072 15.5695 12.4881L9.56946 19.4881C9.29989 19.8026 8.82641 19.839 8.51192 19.5695C8.19743 19.2999 8.161 18.8264 8.43057 18.5119L14.0122 12L8.43057 5.48811C8.161 5.17361 8.19743 4.70014 8.51192 4.43057Z" fill="#0E74BC" />
+                                            </g>
+                                        </svg>
                                     </a>
 
                                     <div class="flex items-center gap-2">
@@ -882,7 +837,7 @@ get_header();
                     <?php endforeach; ?>
                 </div>
             </div>
-        </div> 
+        </div>
     </div>
 </div>
 <?php get_footer() ?>
@@ -908,60 +863,67 @@ get_header();
 </style>
 <!-- tab active -->
 <script !src="">
-    function myFunction(id) {
-        // Get the text field
-        var copyText = document.getElementById(id);
-
-        // Select the text field
-        copyText.select();
-        copyText.setSelectionRange(0, 99999); // For mobile devices
-
-        // Copy the text inside the text field
-        navigator.clipboard.writeText(copyText.value);
-
-        // Alert the copied text
+function myFunction(inputId) {
+    // Lấy input element
+    var copyText = document.getElementById(inputId);
+    
+    copyText.style.display = "block";
+    
+    // Select text
+    copyText.select();
+    
+    try {
+        // Thực hiện copy
+        document.execCommand('copy');
+        
+        // Thông báo
         alert("<?php pll_e('Copied the text') ?>: " + copyText.value);
+    } catch (err) {
+        console.error('Copy error: ', err);
+    } finally {
+        // Ẩn input lại 
+        copyText.style.display = "none";
     }
-
+}
 </script>
 <script>
     jQuery(document).ready(function($) {
 
-        // Xử lý khi người dùng nhấn Enter trong ô input
-        $('#searchOrder').on('submit', function(e) {
-            e.preventDefault();
-            if (e.key === 'Enter') {
-                e.preventDefault(); // Ngăn gửi form mặc định
+            // Xử lý khi người dùng nhấn Enter trong ô input
+            $('#searchOrder').on('submit', function(e) {
+                    e.preventDefault();
+                    if (e.key === 'Enter') {
+                        e.preventDefault(); // Ngăn gửi form mặc định
 
-                let orderCode = $(this).val().trim();
+                        let orderCode = $(this).val().trim();
 
-                if (orderCode) {
-                    // Gửi AJAX request
-                    $.ajax({
-                        url: '<?= admin_url("admin-ajax.php"); ?>', // Biến ajaxurl được thêm bởi WordPress
-                        type: 'POST',
-                        data: {
-                            action: 'search_order_by_code', // Hook action được định nghĩa trong PHP
-                            order_code: orderCode,
-                        },
-                        beforeSend: function() {
-                            Swal.fire({
-                                title: 'Processing',
-                                html: '<?php pll_e('Please wait...') ?>',
-                                didOpen: () => {
-                                    Swal.showLoading()
-                                }
-                            });
-                        },
-                        success: function(response) {
-                            if (response.success) {
-                                // renderOrderResults(); // Gọi hàm render kết quả
-                                const resultsContainer = $('.order-tab'); // Thay '.order-tab' bằng vùng chứa kết quả
-                                resultsContainer.empty(); // Xóa nội dung cũ
+                        if (orderCode) {
+                            // Gửi AJAX request
+                            $.ajax({
+                                    url: '<?= admin_url("admin-ajax.php"); ?>', // Biến ajaxurl được thêm bởi WordPress
+                                    type: 'POST',
+                                    data: {
+                                        action: 'search_order_by_code', // Hook action được định nghĩa trong PHP
+                                        order_code: orderCode,
+                                    },
+                                    beforeSend: function() {
+                                        Swal.fire({
+                                            title: 'Processing',
+                                            html: '<?php pll_e('Please wait...') ?>',
+                                            didOpen: () => {
+                                                Swal.showLoading()
+                                            }
+                                        });
+                                    },
+                                    success: function(response) {
+                                        if (response.success) {
+                                            // renderOrderResults(); // Gọi hàm render kết quả
+                                            const resultsContainer = $('.order-tab'); // Thay '.order-tab' bằng vùng chứa kết quả
+                                            resultsContainer.empty(); // Xóa nội dung cũ
 
-                                // Lặp qua danh sách đơn hàng và hiển thị
-                                $.each(response.orders, function(index, order) {
-                                    resultsContainer.append(`
+                                            // Lặp qua danh sách đơn hàng và hiển thị
+                                            $.each(response.orders, function(index, order) {
+                                                resultsContainer.append(`
                 <div class="w-full flex flex-col items-center justify-center bg-white rounded-xl">
                     <div class="w-full flex flex-wrap items-center justify-between gap-2 px-8 py-6 border-b border-neutral-200 border-solid">
                         <div class="flex flex-wrap items-center gap-4">
@@ -978,27 +940,27 @@ get_header();
                     </div>
                 </div>
             `);
-                                });
-                            }
-                            } else {
-                                $('.order-tab').html('<p>' + (response.message || '<?php pll_e('No orders found.') ?>') + '</p>');
-                            }
-                        },
-                        error: function(error) {
-                            console.error('Error:', error);
-                            $('.order-tab').html('<p>Something went wrong. Please try again later.</p>');
-                        },
-                    });
-                } else {
-                    alert('<?php pll_e('Please enter an order code.') ?>');
+                                            });
+                                        }
+                                    } else {
+                                        $('.order-tab').html('<p>' + (response.message || '<?php pll_e('No orders found.') ?>') + '</p>');
+                                    }
+                                },
+                                error: function(error) {
+                                    console.error('Error:', error);
+                                    $('.order-tab').html('<p>Something went wrong. Please try again later.</p>');
+                                },
+                            });
+                    } else {
+                        alert('<?php pll_e('Please enter an order code.') ?>');
+                    }
                 }
-            }
-        });
+            });
 
         // Hàm hiển thị kết quả đơn hàng
         function renderOrderResults(orders) {
 
-    });
+        });
 </script>
 <script defer>
     document.addEventListener("DOMContentLoaded", () => {

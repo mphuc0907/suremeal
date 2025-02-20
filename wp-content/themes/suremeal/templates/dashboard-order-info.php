@@ -27,11 +27,8 @@ if (!empty($searchOrder)) {
     $myrows = $wpdb->get_results(
         "SELECT * FROM wp_orders WHERE id_user = " . intval($id) . " AND order_code = '" . esc_sql($searchOrder) . "' ORDER BY id DESC"
     );
-
-
-}else {
+} else {
     $myrows = $wpdb->get_results("SELECT * FROM wp_orders WHERE id_user =" . $id . " ORDER BY id DESC");
-
 }
 
 $countmyrows = count($myrows);
@@ -114,7 +111,7 @@ get_header();
             <div class="flex flex-col lg:flex-row gap-6">
                 <div class="w-full lg:max-w-[322px] flex flex-col gap-5">
                     <!-- profile card -->
-                    <div  class="h-[200px] bg-secondary rounded-xl flex flex-col items-center justify-center gap-4">
+                    <div class="h-[200px] bg-secondary rounded-xl flex flex-col items-center justify-center gap-4">
                         <figure class="w-20 h-20 rounded-full overflow-hidden">
                             <img src="<?= $avatar ? $avatar : $url . '/assets/image/dashboard/avatar-80.svg' ?>" alt="avatar">
                         </figure>
@@ -126,7 +123,7 @@ get_header();
                     </div>
 
                     <!-- nav-active -->
-                    <div  class="dashboard-container">
+                    <div class="dashboard-container">
                         <a href="<?= home_url() ?>/person-info" class="dashboard-item">
                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
                                 fill="none">
@@ -171,12 +168,12 @@ get_header();
                         </a>
                     </div>
                 </div>
-                <div  class="flex-1 w-full lg:max-w-[75%]">
+                <div class="flex-1 w-full lg:max-w-[75%]">
                     <div class="flex flex-col lg:flex-row gap-6 items-center justify-between">
                         <h2 class="text-heading-h5 text-gray-8"><?php pll_e('My orders') ?></h2>
                         <form action="" id="searchOrder">
-                        <input type="text" name="searchOrder" value="<?= $searchOrder ?>" class="home-search radius-8 xl:max-w-[200px] 2xl:max-w-[386px]"
-                            placeholder="<?php pll_e('Search by order code') ?>">
+                            <input type="text" name="searchOrder" value="<?= $searchOrder ?>" class="home-search radius-8 xl:max-w-[200px] 2xl:max-w-[386px]"
+                                placeholder="<?php pll_e('Search by order code') ?>">
                         </form>
                     </div>
 
@@ -240,14 +237,14 @@ get_header();
                                             <p class="text-body-md-medium text-gray-8"><?php pll_e('Order code') ?>:</p>
                                             <p class="text-body-md-medium text-neutral-500"><?= $value->order_code ?></p>
                                             <input type="text" value="<?= $value->order_code ?>" id="myInput<?= $value->order_code ?>" style="display: none">
-                                            <button class="button button-trans p-0"  onclick="myFunction('myInput<?= $value->order_code ?>')">
+                                            <button class="button button-trans p-0" onclick="myFunction('myInput<?= $value->order_code ?>')">
                                                 <figure class="w-5 h-5"><img src="<?= $url ?>/assets/image/icon/duplicate.svg"
-                                                                             alt="icon">
+                                                        alt="icon">
                                                 </figure>
                                             </button>
                                         </div>
                                         <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
-                                        <p class="text-body-md-medium text-neutral-500" ><?php pll_e('Deliver') ?></p>
+                                        <p class="text-body-md-medium text-neutral-500"><?php pll_e('Deliver') ?></p>
                                         <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
                                         <p class="text-body-md-medium text-neutral-500"><?= $countProduct ?> <?php pll_e('products') ?></p>
                                         <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
@@ -255,11 +252,11 @@ get_header();
                                             <a href="/pdf/?order_code=<?= $value->order_code ?>" target="_blank" class="text-body-md-medium text-neutral-500">Receipt</a>
                                             <button class="button bg-trans" onclick="window.open('/pdf/?order_code=' . <?= $value->order_code ?>, '_blank')">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="20"
-                                                     viewBox="0 0 16 20" fill="none">
+                                                    viewBox="0 0 16 20" fill="none">
                                                     <path
-                                                            d="M9.75 1.24258V4.96007C9.75 5.46411 9.75 5.71614 9.84537 5.90866C9.92926 6.078 10.0631 6.21568 10.2278 6.30197C10.4149 6.40006 10.66 6.40006 11.15 6.40006H14.7642M11.5 10.9H4.5M11.5 14.5H4.5M6.25 7.3H4.5M9.75 1H5.2C3.72986 1 2.99479 1 2.43327 1.29428C1.93935 1.55314 1.53778 1.96619 1.28611 2.47423C1 3.05179 1 3.80786 1 5.32V14.68C1 16.1921 1 16.9482 1.28611 17.5258C1.53778 18.0338 1.93935 18.4469 2.43327 18.7057C2.99479 19 3.72986 19 5.2 19H10.8C12.2701 19 13.0052 19 13.5667 18.7057C14.0607 18.4469 14.4622 18.0338 14.7139 17.5258C15 16.9482 15 16.1921 15 14.68V6.4L9.75 1Z"
-                                                            stroke="#475467" stroke-width="1.5" stroke-linecap="round"
-                                                            stroke-linejoin="round" />
+                                                        d="M9.75 1.24258V4.96007C9.75 5.46411 9.75 5.71614 9.84537 5.90866C9.92926 6.078 10.0631 6.21568 10.2278 6.30197C10.4149 6.40006 10.66 6.40006 11.15 6.40006H14.7642M11.5 10.9H4.5M11.5 14.5H4.5M6.25 7.3H4.5M9.75 1H5.2C3.72986 1 2.99479 1 2.43327 1.29428C1.93935 1.55314 1.53778 1.96619 1.28611 2.47423C1 3.05179 1 3.80786 1 5.32V14.68C1 16.1921 1 16.9482 1.28611 17.5258C1.53778 18.0338 1.93935 18.4469 2.43327 18.7057C2.99479 19 3.72986 19 5.2 19H10.8C12.2701 19 13.0052 19 13.5667 18.7057C14.0607 18.4469 14.4622 18.0338 14.7139 17.5258C15 16.9482 15 16.1921 15 14.68V6.4L9.75 1Z"
+                                                        stroke="#475467" stroke-width="1.5" stroke-linecap="round"
+                                                        stroke-linejoin="round" />
                                                 </svg>
                                             </button>
                                         </div>
@@ -356,9 +353,9 @@ get_header();
                                             <p class="text-body-md-medium text-gray-8"><?php pll_e('Order code') ?>:</p>
                                             <p class="text-body-md-medium text-neutral-500"><?= $value->order_code ?></p>
                                             <input type="text" value="<?= $value->order_code ?>" id="myInput<?= $value->order_code ?>" style="display: none">
-                                            <button class="button button-trans p-0"  onclick="myFunction('myInput<?= $value->order_code ?>')">
+                                            <button class="button button-trans p-0" onclick="myFunction('myInput<?= $value->order_code ?>')">
                                                 <figure class="w-5 h-5"><img src="<?= $url ?>/assets/image/icon/duplicate.svg"
-                                                                             alt="icon">
+                                                        alt="icon">
                                                 </figure>
                                             </button>
                                         </div>
@@ -371,11 +368,11 @@ get_header();
                                             <a href="/pdf/?order_code=<?= $value->order_code ?>" target="_blank" class="text-body-md-medium text-neutral-500">Receipt</a>
                                             <button class="button bg-trans" onclick="window.open('/pdf/?order_code=' . <?= $value->order_code ?>, '_blank')">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="20"
-                                                     viewBox="0 0 16 20" fill="none">
+                                                    viewBox="0 0 16 20" fill="none">
                                                     <path
-                                                            d="M9.75 1.24258V4.96007C9.75 5.46411 9.75 5.71614 9.84537 5.90866C9.92926 6.078 10.0631 6.21568 10.2278 6.30197C10.4149 6.40006 10.66 6.40006 11.15 6.40006H14.7642M11.5 10.9H4.5M11.5 14.5H4.5M6.25 7.3H4.5M9.75 1H5.2C3.72986 1 2.99479 1 2.43327 1.29428C1.93935 1.55314 1.53778 1.96619 1.28611 2.47423C1 3.05179 1 3.80786 1 5.32V14.68C1 16.1921 1 16.9482 1.28611 17.5258C1.53778 18.0338 1.93935 18.4469 2.43327 18.7057C2.99479 19 3.72986 19 5.2 19H10.8C12.2701 19 13.0052 19 13.5667 18.7057C14.0607 18.4469 14.4622 18.0338 14.7139 17.5258C15 16.9482 15 16.1921 15 14.68V6.4L9.75 1Z"
-                                                            stroke="#475467" stroke-width="1.5" stroke-linecap="round"
-                                                            stroke-linejoin="round" />
+                                                        d="M9.75 1.24258V4.96007C9.75 5.46411 9.75 5.71614 9.84537 5.90866C9.92926 6.078 10.0631 6.21568 10.2278 6.30197C10.4149 6.40006 10.66 6.40006 11.15 6.40006H14.7642M11.5 10.9H4.5M11.5 14.5H4.5M6.25 7.3H4.5M9.75 1H5.2C3.72986 1 2.99479 1 2.43327 1.29428C1.93935 1.55314 1.53778 1.96619 1.28611 2.47423C1 3.05179 1 3.80786 1 5.32V14.68C1 16.1921 1 16.9482 1.28611 17.5258C1.53778 18.0338 1.93935 18.4469 2.43327 18.7057C2.99479 19 3.72986 19 5.2 19H10.8C12.2701 19 13.0052 19 13.5667 18.7057C14.0607 18.4469 14.4622 18.0338 14.7139 17.5258C15 16.9482 15 16.1921 15 14.68V6.4L9.75 1Z"
+                                                        stroke="#475467" stroke-width="1.5" stroke-linecap="round"
+                                                        stroke-linejoin="round" />
                                                 </svg>
                                             </button>
                                         </div>
@@ -472,9 +469,9 @@ get_header();
                                             <p class="text-body-md-medium text-gray-8"><?php pll_e('Order code') ?>:</p>
                                             <p class="text-body-md-medium text-neutral-500"><?= $value->order_code ?></p>
                                             <input type="text" value="<?= $value->order_code ?>" id="myInput<?= $value->order_code ?>" style="display: none">
-                                            <button class="button button-trans p-0"  onclick="myFunction('myInput<?= $value->order_code ?>')">
+                                            <button class="button button-trans p-0" onclick="myFunction('myInput<?= $value->order_code ?>')">
                                                 <figure class="w-5 h-5"><img src="<?= $url ?>/assets/image/icon/duplicate.svg"
-                                                                             alt="icon">
+                                                        alt="icon">
                                                 </figure>
                                             </button>
                                         </div>
@@ -487,11 +484,11 @@ get_header();
                                             <a href="/pdf/?order_code=<?= $value->order_code ?>" target="_blank" class="text-body-md-medium text-neutral-500">Receipt</a>
                                             <button class="button bg-trans" onclick="window.open('/pdf/?order_code=' . <?= $value->order_code ?>, '_blank')">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="20"
-                                                     viewBox="0 0 16 20" fill="none">
+                                                    viewBox="0 0 16 20" fill="none">
                                                     <path
-                                                            d="M9.75 1.24258V4.96007C9.75 5.46411 9.75 5.71614 9.84537 5.90866C9.92926 6.078 10.0631 6.21568 10.2278 6.30197C10.4149 6.40006 10.66 6.40006 11.15 6.40006H14.7642M11.5 10.9H4.5M11.5 14.5H4.5M6.25 7.3H4.5M9.75 1H5.2C3.72986 1 2.99479 1 2.43327 1.29428C1.93935 1.55314 1.53778 1.96619 1.28611 2.47423C1 3.05179 1 3.80786 1 5.32V14.68C1 16.1921 1 16.9482 1.28611 17.5258C1.53778 18.0338 1.93935 18.4469 2.43327 18.7057C2.99479 19 3.72986 19 5.2 19H10.8C12.2701 19 13.0052 19 13.5667 18.7057C14.0607 18.4469 14.4622 18.0338 14.7139 17.5258C15 16.9482 15 16.1921 15 14.68V6.4L9.75 1Z"
-                                                            stroke="#475467" stroke-width="1.5" stroke-linecap="round"
-                                                            stroke-linejoin="round" />
+                                                        d="M9.75 1.24258V4.96007C9.75 5.46411 9.75 5.71614 9.84537 5.90866C9.92926 6.078 10.0631 6.21568 10.2278 6.30197C10.4149 6.40006 10.66 6.40006 11.15 6.40006H14.7642M11.5 10.9H4.5M11.5 14.5H4.5M6.25 7.3H4.5M9.75 1H5.2C3.72986 1 2.99479 1 2.43327 1.29428C1.93935 1.55314 1.53778 1.96619 1.28611 2.47423C1 3.05179 1 3.80786 1 5.32V14.68C1 16.1921 1 16.9482 1.28611 17.5258C1.53778 18.0338 1.93935 18.4469 2.43327 18.7057C2.99479 19 3.72986 19 5.2 19H10.8C12.2701 19 13.0052 19 13.5667 18.7057C14.0607 18.4469 14.4622 18.0338 14.7139 17.5258C15 16.9482 15 16.1921 15 14.68V6.4L9.75 1Z"
+                                                        stroke="#475467" stroke-width="1.5" stroke-linecap="round"
+                                                        stroke-linejoin="round" />
                                                 </svg>
                                             </button>
                                         </div>
@@ -586,9 +583,9 @@ get_header();
                                             <p class="text-body-md-medium text-gray-8"><?php pll_e('Order code') ?>:</p>
                                             <p class="text-body-md-medium text-neutral-500 order_code"><?= $value->order_code ?></p>
                                             <input type="text" value="<?= $value->order_code ?>" id="myInput<?= $value->order_code ?>" style="display: none">
-                                            <button class="button button-trans p-0"  onclick="myFunction('myInput<?= $value->order_code ?>')">
+                                            <button class="button button-trans p-0" onclick="myFunction('myInput<?= $value->order_code ?>')">
                                                 <figure class="w-5 h-5"><img src="<?= $url ?>/assets/image/icon/duplicate.svg"
-                                                                             alt="icon">
+                                                        alt="icon">
                                                 </figure>
                                             </button>
                                         </div>
@@ -601,11 +598,11 @@ get_header();
                                             <a href="/pdf/?order_code=<?= $value->order_code ?>" target="_blank" class="text-body-md-medium text-neutral-500">Receipt</a>
                                             <button class="button bg-trans" onclick="window.open('/pdf/?order_code=' . <?= $value->order_code ?>, '_blank')">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="20"
-                                                     viewBox="0 0 16 20" fill="none">
+                                                    viewBox="0 0 16 20" fill="none">
                                                     <path
-                                                            d="M9.75 1.24258V4.96007C9.75 5.46411 9.75 5.71614 9.84537 5.90866C9.92926 6.078 10.0631 6.21568 10.2278 6.30197C10.4149 6.40006 10.66 6.40006 11.15 6.40006H14.7642M11.5 10.9H4.5M11.5 14.5H4.5M6.25 7.3H4.5M9.75 1H5.2C3.72986 1 2.99479 1 2.43327 1.29428C1.93935 1.55314 1.53778 1.96619 1.28611 2.47423C1 3.05179 1 3.80786 1 5.32V14.68C1 16.1921 1 16.9482 1.28611 17.5258C1.53778 18.0338 1.93935 18.4469 2.43327 18.7057C2.99479 19 3.72986 19 5.2 19H10.8C12.2701 19 13.0052 19 13.5667 18.7057C14.0607 18.4469 14.4622 18.0338 14.7139 17.5258C15 16.9482 15 16.1921 15 14.68V6.4L9.75 1Z"
-                                                            stroke="#475467" stroke-width="1.5" stroke-linecap="round"
-                                                            stroke-linejoin="round" />
+                                                        d="M9.75 1.24258V4.96007C9.75 5.46411 9.75 5.71614 9.84537 5.90866C9.92926 6.078 10.0631 6.21568 10.2278 6.30197C10.4149 6.40006 10.66 6.40006 11.15 6.40006H14.7642M11.5 10.9H4.5M11.5 14.5H4.5M6.25 7.3H4.5M9.75 1H5.2C3.72986 1 2.99479 1 2.43327 1.29428C1.93935 1.55314 1.53778 1.96619 1.28611 2.47423C1 3.05179 1 3.80786 1 5.32V14.68C1 16.1921 1 16.9482 1.28611 17.5258C1.53778 18.0338 1.93935 18.4469 2.43327 18.7057C2.99479 19 3.72986 19 5.2 19H10.8C12.2701 19 13.0052 19 13.5667 18.7057C14.0607 18.4469 14.4622 18.0338 14.7139 17.5258C15 16.9482 15 16.1921 15 14.68V6.4L9.75 1Z"
+                                                        stroke="#475467" stroke-width="1.5" stroke-linecap="round"
+                                                        stroke-linejoin="round" />
                                                 </svg>
                                             </button>
                                         </div>
@@ -700,9 +697,9 @@ get_header();
                                             <p class="text-body-md-medium text-gray-8"><?php pll_e('Order code') ?>:</p>
                                             <p class="text-body-md-medium text-neutral-500"><?= $value->order_code ?></p>
                                             <input type="text" value="<?= $value->order_code ?>" id="myInput<?= $value->order_code ?>" style="display: none">
-                                            <button class="button button-trans p-0"  onclick="myFunction('myInput<?= $value->order_code ?>')">
+                                            <button class="button button-trans p-0" onclick="myFunction('myInput<?= $value->order_code ?>')">
                                                 <figure class="w-5 h-5"><img src="<?= $url ?>/assets/image/icon/duplicate.svg"
-                                                                             alt="icon">
+                                                        alt="icon">
                                                 </figure>
                                             </button>
                                         </div>
@@ -715,11 +712,11 @@ get_header();
                                             <a href="/pdf/?order_code=<?= $value->order_code ?>" target="_blank" class="text-body-md-medium text-neutral-500">Receipt</a>
                                             <button class="button bg-trans" onclick="window.open('/pdf/?order_code=' . <?= $value->order_code ?>, '_blank')">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="20"
-                                                     viewBox="0 0 16 20" fill="none">
+                                                    viewBox="0 0 16 20" fill="none">
                                                     <path
-                                                            d="M9.75 1.24258V4.96007C9.75 5.46411 9.75 5.71614 9.84537 5.90866C9.92926 6.078 10.0631 6.21568 10.2278 6.30197C10.4149 6.40006 10.66 6.40006 11.15 6.40006H14.7642M11.5 10.9H4.5M11.5 14.5H4.5M6.25 7.3H4.5M9.75 1H5.2C3.72986 1 2.99479 1 2.43327 1.29428C1.93935 1.55314 1.53778 1.96619 1.28611 2.47423C1 3.05179 1 3.80786 1 5.32V14.68C1 16.1921 1 16.9482 1.28611 17.5258C1.53778 18.0338 1.93935 18.4469 2.43327 18.7057C2.99479 19 3.72986 19 5.2 19H10.8C12.2701 19 13.0052 19 13.5667 18.7057C14.0607 18.4469 14.4622 18.0338 14.7139 17.5258C15 16.9482 15 16.1921 15 14.68V6.4L9.75 1Z"
-                                                            stroke="#475467" stroke-width="1.5" stroke-linecap="round"
-                                                            stroke-linejoin="round" />
+                                                        d="M9.75 1.24258V4.96007C9.75 5.46411 9.75 5.71614 9.84537 5.90866C9.92926 6.078 10.0631 6.21568 10.2278 6.30197C10.4149 6.40006 10.66 6.40006 11.15 6.40006H14.7642M11.5 10.9H4.5M11.5 14.5H4.5M6.25 7.3H4.5M9.75 1H5.2C3.72986 1 2.99479 1 2.43327 1.29428C1.93935 1.55314 1.53778 1.96619 1.28611 2.47423C1 3.05179 1 3.80786 1 5.32V14.68C1 16.1921 1 16.9482 1.28611 17.5258C1.53778 18.0338 1.93935 18.4469 2.43327 18.7057C2.99479 19 3.72986 19 5.2 19H10.8C12.2701 19 13.0052 19 13.5667 18.7057C14.0607 18.4469 14.4622 18.0338 14.7139 17.5258C15 16.9482 15 16.1921 15 14.68V6.4L9.75 1Z"
+                                                        stroke="#475467" stroke-width="1.5" stroke-linecap="round"
+                                                        stroke-linejoin="round" />
                                                 </svg>
                                             </button>
                                         </div>
@@ -818,46 +815,45 @@ get_header();
         // Alert the copied text
         alert("<?php pll_e('Copied the text') ?>: " + copyText.value);
     }
-
 </script>
 <script>
     jQuery(document).ready(function($) {
 
-        // Xử lý khi người dùng nhấn Enter trong ô input
-        $('#searchOrder').on('submit', function(e) {
-            e.preventDefault();
-            if (e.key === 'Enter') {
-                e.preventDefault(); // Ngăn gửi form mặc định
+            // Xử lý khi người dùng nhấn Enter trong ô input
+            $('#searchOrder').on('submit', function(e) {
+                    e.preventDefault();
+                    if (e.key === 'Enter') {
+                        e.preventDefault(); // Ngăn gửi form mặc định
 
-                let orderCode = $(this).val().trim();
+                        let orderCode = $(this).val().trim();
 
-                if (orderCode) {
-                    // Gửi AJAX request
-                    $.ajax({
-                        url: '<?= admin_url("admin-ajax.php"); ?>', // Biến ajaxurl được thêm bởi WordPress
-                        type: 'POST',
-                        data: {
-                            action: 'search_order_by_code', // Hook action được định nghĩa trong PHP
-                            order_code: orderCode,
-                        },
-                        beforeSend: function() {
-                            Swal.fire({
-                                title: 'Processing',
-                                html: '<?php pll_e('Please wait...') ?>',
-                                didOpen: () => {
-                                    Swal.showLoading()
-                                }
-                            });
-                        },
-                        success: function(response) {
-                            if (response.success) {
-                                // renderOrderResults(); // Gọi hàm render kết quả
-                                const resultsContainer = $('.order-tab'); // Thay '.order-tab' bằng vùng chứa kết quả
-                                resultsContainer.empty(); // Xóa nội dung cũ
+                        if (orderCode) {
+                            // Gửi AJAX request
+                            $.ajax({
+                                    url: '<?= admin_url("admin-ajax.php"); ?>', // Biến ajaxurl được thêm bởi WordPress
+                                    type: 'POST',
+                                    data: {
+                                        action: 'search_order_by_code', // Hook action được định nghĩa trong PHP
+                                        order_code: orderCode,
+                                    },
+                                    beforeSend: function() {
+                                        Swal.fire({
+                                            title: 'Processing',
+                                            html: '<?php pll_e('Please wait...') ?>',
+                                            didOpen: () => {
+                                                Swal.showLoading()
+                                            }
+                                        });
+                                    },
+                                    success: function(response) {
+                                        if (response.success) {
+                                            // renderOrderResults(); // Gọi hàm render kết quả
+                                            const resultsContainer = $('.order-tab'); // Thay '.order-tab' bằng vùng chứa kết quả
+                                            resultsContainer.empty(); // Xóa nội dung cũ
 
-                                // Lặp qua danh sách đơn hàng và hiển thị
-                                $.each(response.orders, function(index, order) {
-                                    resultsContainer.append(`
+                                            // Lặp qua danh sách đơn hàng và hiển thị
+                                            $.each(response.orders, function(index, order) {
+                                                resultsContainer.append(`
                 <div class="w-full flex flex-col items-center justify-center bg-white rounded-xl">
                     <div class="w-full flex flex-wrap items-center justify-between gap-2 px-8 py-6 border-b border-neutral-200 border-solid">
                         <div class="flex flex-wrap items-center gap-4">
@@ -874,27 +870,27 @@ get_header();
                     </div>
                 </div>
             `);
-                                });
-                            }
-                            } else {
-                                $('.order-tab').html('<p>' + (response.message || '<?php pll_e('No orders found.') ?>') + '</p>');
-                            }
-                        },
-                        error: function(error) {
-                            console.error('Error:', error);
-                            $('.order-tab').html('<p>Something went wrong. Please try again later.</p>');
-                        },
-                    });
-                } else {
-                    alert('<?php pll_e('Please enter an order code.') ?>');
+                                            });
+                                        }
+                                    } else {
+                                        $('.order-tab').html('<p>' + (response.message || '<?php pll_e('No orders found.') ?>') + '</p>');
+                                    }
+                                },
+                                error: function(error) {
+                                    console.error('Error:', error);
+                                    $('.order-tab').html('<p>Something went wrong. Please try again later.</p>');
+                                },
+                            });
+                    } else {
+                        alert('<?php pll_e('Please enter an order code.') ?>');
+                    }
                 }
-            }
-        });
+            });
 
         // Hàm hiển thị kết quả đơn hàng
         function renderOrderResults(orders) {
 
-    });
+        });
 </script>
 <script defer>
     document.addEventListener("DOMContentLoaded", () => {

@@ -5,6 +5,42 @@ $slider = get_field('slider', $id);
 $special_deals = get_field('special_deals', $id);
 
 $url = get_template_directory_uri();
+
+function get_dealer_discount($dealer_id, $product_id)
+{
+    global $wpdb;
+    $discount = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT * FROM wp_discount_dealer 
+            WHERE id_dealer = %d AND product = %d",
+            $dealer_id,
+            $product_id
+        )
+    );
+    return $discount;
+}
+
+// Function to calculate final price with dealer discount
+function calculate_dealer_price($original_price, $discount)
+{
+    if (!$discount) return false;
+
+    if ($discount->discount_type == 0) {
+        // Fixed amount discount
+        return max(0, $original_price - $discount->discount_amount);
+    } else {
+        // Percentage discount
+        $discount_amount = $original_price * ($discount->discount_amount / 100);
+        return max(0, $original_price - $discount_amount);
+    }
+}
+
+$authenticated_dealer = validate_dealer_token();
+$dealer_id = null;
+if ($authenticated_dealer) {
+    $dealer_id = $authenticated_dealer->ID;
+}
+
 // Custom field "on_sale_now"
 // Custom field "on_sale_now"
 $onSaleNow = get_field('on_sale_now', $id);
@@ -371,6 +407,26 @@ get_header();
                         if (empty($instock)) {
                             $instock = 0;
                         }
+
+                        
+                        // Get dealer discount if dealer is logged in
+                        $dealer_discount = $dealer_id ? get_dealer_discount($dealer_id, $value->ID) : null;
+
+                        // Calculate final price based on dealer discount
+                        $final_price = $price;
+                        if ($dealer_discount) {
+                            // Calculate dealer discount price from original price
+                            $dealer_price = calculate_dealer_price($price, $dealer_discount);
+                            // If there's a sale price, compare it with dealer price
+                            if ($sale_price) {
+                                $final_price = min($dealer_price, $sale_price);
+                            } else {
+                                $final_price = $dealer_price;
+                            }
+                        } else {
+                            // If no dealer discount, use sale price if available
+                            $final_price = $sale_price ? $sale_price : $price;
+                        }
                     ?>
                         <div class="img-hover rounded-3xl overflow-hidden shadow-2">
                             <div class="image max-h-[232px] overflow-hidden deport-product-white flex items-center justify-center">
@@ -412,16 +468,26 @@ get_header();
                                     </p>
                                     <div class="flex gap-3 items-center">
                                         <span class="text-body-sm-regular text-neutral-500">From</span>
-                                        <?php if ($sale_price) :?>
-                                            <div class="flex items-center gap-2">
-                                                <p class=" text-body-md-medium text-neutral-500 line-through"><?= formatBalance($price) ?></p>
-                                                <p class="text-heading-h7 text-gray-9"><?= formatBalance($sale_price) ?></p>
-                                            </div>
-                                        <?php else:?>
-                                            <div class="flex items-center gap-2">
-                                                <p class="text-heading-h7 text-gray-9"><?= formatBalance($price) ?></p>
-                                            </div>
-                                        <?php endif;?>
+                                        <?php if($price): ?>
+                                            <?php if ($final_price < $price): ?>
+                                                <div class="flex items-center gap-2">
+                                                    <p class="text-body-md-medium text-neutral-500 line-through">
+                                                        <?= formatBalance($price) ?>
+                                                    </p>
+                                                    <p class="text-heading-h7 text-gray-9">
+                                                        <?= formatBalance($final_price) ?>
+                                                    </p>
+                                                </div>
+                                            <?php else: ?>
+                                                <div class="flex items-center gap-2">
+                                                    <p class="text-heading-h7 text-gray-9">
+                                                        <?= formatBalance($price) ?>
+                                                    </p>
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            0
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>

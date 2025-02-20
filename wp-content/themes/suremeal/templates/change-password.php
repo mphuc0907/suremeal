@@ -8,17 +8,17 @@ $email = isset($_GET['email']) ? sanitize_email($_GET['email']) : '';
 
 // Validate token
 $reset_request = $wpdb->get_row($wpdb->prepare(
-    "SELECT * FROM wp_password_reset_tokens 
-    WHERE token = %s 
-    AND expiry > %d 
-    AND email = %s",
-    $token, 
-    time(),
-    $email
+   "SELECT * FROM wp_password_reset_tokens
+   WHERE token = %s
+   AND expiry > %d
+   AND email = %s",
+   $token,
+   time(),
+   $email
 ));
 
 if (!$reset_request) {
-    wp_die('Invalid, expired, or already used reset token.');
+   wp_die('Invalid, expired, or already used reset token.');
 }
 
 get_header();

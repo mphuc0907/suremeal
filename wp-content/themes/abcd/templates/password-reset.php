@@ -119,7 +119,7 @@ get_header();
                             <?php endif; ?>
 
                             <?php if (isset($success_message)): ?>
-                                <div class="w-full text-green-600 text-body-sm-regular">
+                                <div class="w-full text-[#16a34a] text-body-sm-regular">
                                     <?php echo $success_message; ?>
                                 </div>
                             <?php endif; ?>

@@ -1,13 +1,13 @@
-<?php /* Template Name: Order-detail */ ?>
+<?php /* Template Name: Order detail */ ?>
 <?php
-get_header();
+$url = get_template_directory_uri();
 
 global $wpdb;
 $code = $_GET['order_code'];
 
 $get_newest_order = $wpdb->get_results("SELECT * FROM wp_orders WHERE order_code = '{$code}' ORDER BY id DESC");
 $dataProduct = $get_newest_order[0]->dataproduct;
-$decodedData = json_decode(str_replace('\\' ,"",$dataProduct), true);
+$decodedData = json_decode(str_replace('\\', "", $dataProduct), true);
 $countProduct = count($decodedData);
 $time_order_uat = $get_newest_order[0]->time_order;
 date_default_timezone_set('America/New_York');
@@ -37,273 +37,364 @@ $name = "";
 if ($status == 1) {
     $class = 'warning';
     $name = 'Processing';
-}elseif ($status == 2) {
+} elseif ($status == 2) {
     $class = 'success';
     $name = 'Completed';
-}elseif ($status == 4) {
+} elseif ($status == 4) {
     $class = 'error';
     $name = 'Canceled';
-}else {
+} else {
     $class = 'warning';
     $name = 'In progress';
 }
 ?>
-<main class="bg-[#EEF0F6]">
-    <section class="py-6">
-        <div class="container">
-            <nav class="breadcrumb text-body-md-medium text-gray-8" aria-label="breadcrumb">
-                <!-- Sử dụng schema.org để định nghĩa breadcrumb list -->
-                <ol class="flex flex-wrap gap-3 items-center" itemscope
-                    itemtype="https://schema.org/BreadcrumbList">
-                    <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
-                        <a href="<?= home_url() ?>" class="text-secondary hover:text-primary" itemprop="item">
-                            <span itemprop="name">Home</span>
-                        </a>
-                        <meta itemprop="position" content="1" />
-                    </li>
-                    <span>/</span>
-                    <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
-                        <a href="<?= home_url() ?>/person-info/" class="text-secondary hover:text-primary" itemprop="item">
-                            <span itemprop="name">Personal</span>
-                        </a>
-                        <meta itemprop="position" content="1" />
-                    </li>
-                    <span>/</span>
-                    <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
-                        <a href="<?= home_url() ?>/order-info/" class="text-secondary hover:text-primary" itemprop="item">
-                            <span itemprop="name">Order information</span>
-                        </a>
-                        <meta itemprop="position" content="1" />
-                    </li>
-                    <span>/</span>
-                    <!-- <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
-                            <a href="#" class="text-secondary hover:text-primary" itemprop="item">
-                                <span itemprop="name">Blog</span>
-                            </a>
-                            <meta itemprop="position" content="1" />
-                        </li>
-                        <span>/</span> -->
-                    <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem"
-                        aria-current="page">
-                        <span itemprop="name">Order details</span>
-                        <meta itemprop="position" content="4" />
-                    </li>
-                </ol>
-            </nav>
-        </div>
-    </section>
+<?php
+get_header('dealer');
+?>
+<style>
+    .badge {
+        border-radius: 8px;
+    }
 
-    <section class="pb-20">
-        <div class="container">
-            <div class="flex flex-col lg:flex-row gap-6">
-                <div class="w-full lg:w-[67%] lg:max-w-[900px]">
-                    <div class="w-full flex flex-col gap-6">
-                        <div class="w-full flex flex-col items-center justify-center bg-white rounded-xl">
-                            <div
-                                class="w-full flex flex-wrap items-center justify-between gap-4 px-8 py-6 border-b border-neutral-200 border-solid">
-                                <div class="flex flex-wrap items-center gap-4">
-                                    <p class="text-body-md-medium text-gray-8"><?= $formattedDateEastern ?></p>
+    .warning {
+        color: #ffa300;
+        background: #fff8d6;
+    }
 
-                                    <div class="flex items-center gap-4">
-                                        <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
-                                        <div class="flex items-center gap-2">
-                                            <p class="text-body-md-medium text-gray-8">Order code:</p>
-                                            <p class="text-body-md-medium text-neutral-500 order_code"><?= $code ?></p>
-                                            <input type="text" value="<?= $code ?>" id="myInput<?= $code ?>" style="display: none">
-                                            <button class="button button-trans p-0"  onclick="myFunction('myInput<?= $code ?>')">
-                                                <figure class="w-5 h-5"><img src="../html/assets/image/icon/duplicate.svg"
-                                                                             alt="icon">
-                                                </figure>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center gap-4">
-                                        <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
-                                        <p class="text-body-md-medium text-neutral-500">Deliver</p>
-                                    </div>
+    .success {
+        color: #00a151;
+        background: #dbffe4;
+    }
 
-                                    <div class="flex items-center gap-4">
-                                        <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
-                                        <p class="text-body-md-medium text-neutral-500"><?= $countProduct ?> products</p>
-                                    </div>
-                                    <div class="flex items-center gap-4">
-                                        <div class="w-1 h-1 rounded-full bg-[#D9D9D9]"></div>
-                                        <div class="flex items-center gap-2">
-                                            <a href="/pdf/?order_code=<?= $code ?>" target="_blank" class="text-body-md-medium text-neutral-500">Receipt</a>
-                                            <button class="button bg-trans" onclick="window.open('/pdf/?order_code=' . <?= $code ?>, '_blank')">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="20"
-                                                     viewBox="0 0 16 20" fill="none">
-                                                    <path
-                                                            d="M9.75 1.24258V4.96007C9.75 5.46411 9.75 5.71614 9.84537 5.90866C9.92926 6.078 10.0631 6.21568 10.2278 6.30197C10.4149 6.40006 10.66 6.40006 11.15 6.40006H14.7642M11.5 10.9H4.5M11.5 14.5H4.5M6.25 7.3H4.5M9.75 1H5.2C3.72986 1 2.99479 1 2.43327 1.29428C1.93935 1.55314 1.53778 1.96619 1.28611 2.47423C1 3.05179 1 3.80786 1 5.32V14.68C1 16.1921 1 16.9482 1.28611 17.5258C1.53778 18.0338 1.93935 18.4469 2.43327 18.7057C2.99479 19 3.72986 19 5.2 19H10.8C12.2701 19 13.0052 19 13.5667 18.7057C14.0607 18.4469 14.4622 18.0338 14.7139 17.5258C15 16.9482 15 16.1921 15 14.68V6.4L9.75 1Z"
-                                                            stroke="#475467" stroke-width="1.5" stroke-linecap="round"
-                                                            stroke-linejoin="round" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="badge <?= $class ?>">
-                                    <?= $name ?>
-                                </div>
-                            </div>
-
-                            <div
-                                class="min-h-[120px] overflow-x-auto 3xl:overflow-x-hidden custom-scrollbar w-full py-6 flex flex-col gap-3 border-b border-solid border-neutral-200">
-                                <!-- progress bar -->
-                                <div class="progress-order">
-                                    <div class="progress-order-bar">
-                                        <!-- thêm active khi đã xong tiến trình -->
-                                        <div class="progress-order-item <?php if($status_transport >= 1):?> active<?php endif;?>">
-                                            <div class="dot"></div>
-                                            <div class="content">
-                                                <figure class="w-36"><img
-                                                        src="../html/assets/image/order/note-book-primary.svg"
-                                                        alt="icon">
-                                                </figure>
-                                                <p>Order Placed</p>
-                                            </div>
-                                        </div>
-                                        <!-- thêm active khi đã xong tiến trình -->
-                                        <div class="progress-order-divider first <?php if($status_transport >= 2):?> active <?php endif;?>"></div>
-                                        <div class="progress-order-item <?php if($status_transport > 2):?> active<?php elseif ($status_transport == 2):  ?>processing  <?php endif;?>">
-                                            <div class="dot"></div>
-                                            <div class="content">
-                                                <figure class="w-36"><img
-                                                        src="../html/assets/image/order/pakage.svg" alt="icon">
-                                                </figure>
-                                                <p>Packaging</p>
-                                            </div>
-                                        </div>
-                                        <!-- thêm active khi đã xong tiến trình -->
-                                        <div class="progress-order-divider second <?php if($status_transport >= 3):?> active <?php endif;?>"></div>
-                                        <div class="progress-order-item  <?php if($status_transport > 3):?> active<?php elseif ($status_transport == 3):  ?>processing  <?php endif;?>">
-                                            <div class="dot"></div>
-                                            <div class="content">
-                                                <figure class="w-36"><img src="../html/assets/image/order/truck.svg"
-                                                                          alt="icon">
-                                                </figure>
-                                                <p>On The Road</p>
-                                            </div>
-                                        </div>
-                                        <!-- thêm active khi đã xong tiến trình -->
-                                        <div class="progress-order-divider third <?php if($status_transport >= 4):?> active <?php endif;?>"></div>
-                                        <div class="progress-order-item <?php if($status_transport >= 4):?> active<?php endif;?>">
-                                            <div class="dot"></div>
-                                            <div class="content">
-                                                <figure class="w-36"><img
-                                                        src="../html/assets/image/order/deliver.svg" alt="icon">
-                                                </figure>
-                                                <p>Delivered</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="w-full flex flex-col lg:flex-row gap-6 py-4 px-8">
-                                <div class="w-full flex flex-col gap-4">
-                                    <div class="flex items-center gap-2">
-                                        <figure class="w-6 h-6"><img src="../html/assets/image/icon/user.svg"
-                                                                     alt="icon">
-                                        </figure>
-                                        <p class="text-body-md-medium text-gray-8">Recipient information</p>
-                                    </div>
-                                    <div class="min-h-[76px] flex flex-col gap-2">
-                                        <h2 class="text-body-md-medium text-gray-8"><?= $name_info ?></h2>
-                                        <p class="text-body-sm-regular text-neutral-500">
-                                            Address: <?= $address1 . "," . $country ?>
-                                            <br>
-                                            Phone: <?= $phoneNumber ?>
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class=" w-full h-[1px] lg:w-[1px] lg:h-[68px] bg-neutral-300"></div>
-                                <div class="w-full flex flex-col gap-4">
-                                    <div class="flex items-center gap-2">
-                                        <figure class="w-6 h-6"><img src="../html/assets/image/icon/card.svg"
-                                                                     alt="icon">
-                                        </figure>
-                                        <p class="text-body-md-medium text-gray-8">Payment method</p>
-                                    </div>
-                                    <div class="flex items-center gap-3">
-                                        <figure class="w-[46px] h-[32px]"><img
-                                                src="../html/assets/image/badge-visa.svg" alt="visa"></figure>
-                                        <h2 class="text-body-sm-medium text-gray-9"> ***4242 | Expires 12/34</h2>
-                                    </div>
-                                </div>
-                            </div>
+    .error {
+        color: #e02d2d;
+        background: #ffe7e0;
+    }
+</style>
+<div class="2xl:w-12/12 xl:w-12/12 md:w-full m-auto grid grid-cols-12 gap-8 xl:py-20 xl:px-32 p-5">
+    <div class="2xl:col-span-8 xl:col-span-8 md:col-span-12 col-span-12 text-left">
+        <div class="py-4 mb-0 bg-white rounded-xl">
+            <div
+                    class="items-center md:px-8 px-2 bd-line-bottom pb-2 mb-8 block w-full overflow-hidden">
+                <div class="text-base font-medium color-vector flex items-center float-left mb-1">
+                    <span class="text-base"><?= $formattedDateEastern ?></span>
+                    <svg class="mx-2" xmlns="http://www.w3.org/2000/svg" width="4" height="4"
+                         viewBox="0 0 4 4" fill="none">
+                        <circle cx="2" cy="2" r="2" fill="#D9D9D9"></circle>
+                    </svg>
+                </div>
+                <div class="flex items-center float-left mb-1">
+									<span class="text-base font-medium checkout-color-text mr-2 text-base">Order
+										code:</span>
+                    <span class="checkout-color-unactive font-medium text-base"><?= $code ?></span>
+                    <img class="w-5 h-auto ml-2" onclick="myFunction('myInput_completed<?= $code ?>')" src="<?= $url ?>/assets/dealer/img/copy.png" alt="">
+                </div>
+                <div
+                        class="text-base checkout-color-unactive font-medium flex items-center col-span-4 float-left mb-1">
+                    <svg class="mx-2" xmlns="http://www.w3.org/2000/svg" width="4" height="4"
+                         viewBox="0 0 4 4" fill="none">
+                        <circle cx="2" cy="2" r="2" fill="#D9D9D9"></circle>
+                    </svg>
+                    <span class="checkout-color-unactive font-medium text-base">Deliver</span>
+                    <svg class="mx-2" xmlns="http://www.w3.org/2000/svg" width="4" height="4"
+                         viewBox="0 0 4 4" fill="none">
+                        <circle cx="2" cy="2" r="2" fill="#D9D9D9"></circle>
+                    </svg>
+                    <span class="checkout-color-unactive font-medium"><?= $countProduct ?> products</span>
+                    <svg class="mx-2" xmlns="http://www.w3.org/2000/svg" width="4" height="4"
+                         viewBox="0 0 4 4" fill="none">
+                        <circle cx="2" cy="2" r="2" fill="#D9D9D9"></circle>
+                    </svg>
+                </div>
+                <div class="grid grid-cols-2 col-span-6 float-left mb-1">
+                    <div class="flex items-center text-base checkout-color-unactive font-medium text-base">
+                        Receipt <img class="w-3 ml-2" src="<?= $url ?>/assets/dealer/img/receipt.png" alt="">
+                    </div>
+                </div>
+                <div class="col-span-2 text-center px-2 py-1 font-medium ml-auto order-2 text-sm float-right mb-1 badge <?= $class ?>">
+                    <?= $name ?>
+                </div>
+            </div>
+            <div class="w-full md:px-24 px-14 pb-4 h-124">
+                <div class="relative flex items-center justify-between w-full">
+                    <div
+                            class="absolute left-0 top-2 h-2 w-full -translate-y-2/4 orderdetail-bg-blue-sure">
+                    </div>
+                    <!-- step 1: w-1/3, step2: w-2/3, step3: w-full -->
+                    <?php if ($status_transport >= 1): ?>
+                        <div
+                                class="absolute left-0 top-2 h-2 
+                                <?php if ($status_transport == 2): ?>
+                                    w-1/3
+                                <?php elseif($status_transport == 3): ?>
+                                    w-2/3
+                                <?php elseif($status_transport == 4): ?>
+                                    w-3/3
+                                <?php endif ?>
+                                -translate-y-2/4 bg-blue-sure transition-all duration-500">
                         </div>
-
-                        <div class="flex flex-col gap-4">
-                            <h2 class="text-body-xl-medium text-gray-9">Product list (<?= $totalRecords ?>)</h2>
-                            <div class="flex flex-col gap-4 lg:gap-6 p-6 rounded-xl bg-white">
-
-                                <?php foreach ($decodedData as $key => $va) :
-
-                                    $idPro = $va['id'];
-                                    $price = get_field('price', $idPro);
-                                    $sale_price = get_field('sale_price', $idPro);
-                                    $price_sub += $price * $va['qty'];
-                                    ?>
-                                <div
-                                    class="w-full flex flex-wrap md:flex-row gap-6 lg:gap-0 justify-between items-end md:items-center">
-                                    <div class="flex lg:flex-0 w-full md:w-2/3 max-w-[454px] items-center gap-5">
-                                        <figure
-                                            class="w-[60px] h-[60px] md:w-[100px] md:h-[100px] rounded-xl border border-solid border-neutral-200">
-                                            <img src="<?= $va['img'] ?>" alt="item">
-                                        </figure>
-                                        <div class="flex-1 flex flex-col gap-2">
-                                            <h2 class="text-body-md-medium text-gray-8 truncate-2row"><?= $va['title'] ?></h2>
-                                            <div class="neutral-200 text-body-sm-regular text-gray-7">
-                                                Type: <?= get_field('quantity', $idPro) ?> Pack
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <p class="text-body-md-regular text-gray-8">Quantity: <?= $va['qty'] ?></p>
-
-                                    <p class="text-body-md-medium text-primary"><?php if(empty($sale_price)) {echo formatBalance($price);}else{echo formatBalance($sale_price);}?></p>
+                    <?php endif ?>
+                    <div
+                            class="relative z-10 grid text-white transition-all duration-300 place-items-center <?php if ($status_transport >= 1): ?>active<?php endif; ?>">
+                        <div class="absolute w-max text-center top-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="25" height="24"
+                                 viewBox="0 0 25 24" fill="none">
+                                <circle cx="12.5" cy="12" r="12" fill="#0E74BC"></circle>
+                            </svg>
+                            <svg class="tooltip-checked" xmlns="http://www.w3.org/2000/svg" width="15"
+                                 height="15" viewBox="0 0 13 12" fill="none">
+                                <path d="M10.625 3.375L5.375 8.625L2.75 6" stroke="white"
+                                      stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                </path>
+                            </svg>
+                            <div class="relative text-center mt-5">
+                                <div class="">
+                                    <img class="w-8 h-8" src="<?= $url ?>/assets/dealer/img/notebook.png" alt="">
                                 </div>
-                                <?php endforeach;?>
+                                <div>
+													<span class="text-base font-medium">
+														Order <br class="md:hidden block">Placed
+													</span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="w-full lg:w-[32%] lg:max-w-[436px]">
-                    <div class="flex flex-col gap-5 px-6 py-4 rounded-xl bg-white">
-                        <p class="text-body-md-medium text-gray-9">Payment information</p>
-                        <div class="flex flex-col gap-3">
-                            <div class="flex items-center justify-between">
-                                <p class="text-body-sm-regular text-gray-7">Sub total</p>
-                                <h2 class="text-body-md-medium text-gray-9"><?php echo formatBalance($price_sub)?> </h2>
+                    <div
+                            class="relative z-10 grid text-white transition-all duration-300 place-items-center" <?php if ($status_transport >= 2): ?> active<?php endif; ?>>
+                        <div class="absolute w-max text-center top-0">
+                            <?php if ($status_transport < 2): ?>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                        viewBox="0 0 25 24" fill="none">
+                                    <circle cx="12.5" cy="12" r="11" fill="white" stroke="#0E74BC"
+                                            stroke-width="2" />
+                                </svg>
+                            <?php endif ?>
+                            <?php if ($status_transport >= 2): ?>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="25" height="24"
+                                    viewBox="0 0 25 24" fill="none">
+                                    <circle cx="12.5" cy="12" r="12" fill="#0E74BC"></circle>
+                                </svg>
+                                <svg class="tooltip-checked" xmlns="http://www.w3.org/2000/svg" width="15"
+                                    height="15" viewBox="0 0 13 12" fill="none">
+                                    <path d="M10.625 3.375L5.375 8.625L2.75 6" stroke="white"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    </path>
+                                </svg>
+                            <?php endif; ?>
+                            <div class="relative text-center mt-5">
+                                <div class="">
+                                    <img class="w-8 h-8" src="<?= $url ?>/assets/dealer/img/package.png" alt="">
+                                </div>
+                                <div>
+													<span class="text-base font-medium">
+														Packaging
+													</span>
+                                </div>
                             </div>
-                            <hr class="divider">
-                            <div class="flex items-center justify-between">
-                                <p class="text-body-sm-regular text-gray-7">Discount</p>
-                                <h2 class="text-body-md-medium text-gray-9"><?php echo formatBalance($discount_price)?> </h2>
+                        </div>
+                    </div>
+                    <div
+                            class="relative z-10 grid text-white transition-all duration-300 place-items-center <?php if ($status_transport >= 3): ?> active<?php endif; ?>">
+                        <div class="absolute w-max text-center top-0">
+                            <?php if ($status_transport < 3): ?>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                        viewBox="0 0 25 24" fill="none">
+                                    <circle cx="12.5" cy="12" r="11" fill="white" stroke="#0E74BC"
+                                            stroke-width="2" />
+                                </svg>
+                            <?php endif ?>
+                            <?php if ($status_transport >= 3): ?>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="25" height="24"
+                                    viewBox="0 0 25 24" fill="none">
+                                    <circle cx="12.5" cy="12" r="12" fill="#0E74BC"></circle>
+                                </svg>
+                                <svg class="tooltip-checked" xmlns="http://www.w3.org/2000/svg" width="15"
+                                    height="15" viewBox="0 0 13 12" fill="none">
+                                    <path d="M10.625 3.375L5.375 8.625L2.75 6" stroke="white"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    </path>
+                                </svg>
+                            <?php endif; ?>
+                            <div class="relative text-center mt-5 opacity-50">
+                                <div class="">
+                                    <img class="w-8 h-8" src="<?= $url ?>/assets/dealer/img/truck.png" alt="">
+                                </div>
+                                <div>
+													<span>
+														On The <br class="md:hidden block"> Road
+													</span>
+                                </div>
                             </div>
-                            <div class="flex items-center justify-between">
-                                <p class="text-body-sm-regular text-gray-7">Shipping fee</p>
-                                <h2 class="text-body-md-medium text-gray-9"><?php echo formatBalance($transport_fee)?></h2>
-                            </div>
-<!--                            <div class="flex items-center justify-between">-->
-<!--                                <p class="text-body-sm-regular text-gray-7">Taxes</p>-->
-<!--                                <<p class="text-body-sm-regular text-secondary">Free of charge</p> -->
-<!--                                <h2 class="text-body-md-medium text-gray-9">$190.00 </h2>-->
-<!--                            </div>-->
-                            <hr class="divider">
-                            <div class="flex items-center justify-between">
-                                <p class="text-body-sm-regular text-gray-7">Total payment</p>
-                                <h2 class="text-body-xl-medium text-primary"><?php echo formatBalance($price_payment)?></h2>
+                        </div>
+                    </div>
+                    <div
+                            class="relative z-10 grid text-white transition-all duration-300 place-items-center <?php if ($status_transport >= 4): ?> active<?php endif; ?>">
+                        <div class="absolute w-max text-center top-0">
+                            <?php if ($status_transport < 4): ?>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                        viewBox="0 0 25 24" fill="none">
+                                    <circle cx="12.5" cy="12" r="11" fill="white" stroke="#0E74BC"
+                                            stroke-width="2" />
+                                </svg>
+                            <?php endif ?>
+                            <?php if ($status_transport >= 4): ?>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="25" height="24"
+                                    viewBox="0 0 25 24" fill="none">
+                                    <circle cx="12.5" cy="12" r="12" fill="#0E74BC"></circle>
+                                </svg>
+                                <svg class="tooltip-checked" xmlns="http://www.w3.org/2000/svg" width="15"
+                                    height="15" viewBox="0 0 13 12" fill="none">
+                                    <path d="M10.625 3.375L5.375 8.625L2.75 6" stroke="white"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    </path>
+                                </svg>
+                            <?php endif; ?>
+                            <div class="relative text-center mt-5 opacity-50">
+                                <div class="">
+                                    <img class="w-8 h-8" src="<?= $url ?>/assets/dealer/img/handshake.png" alt="">
+                                </div>
+                                <div>
+													<span>
+														Delivered
+													</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+            <div class="flex grid grid-cols-11 md:px-8 mt-8 px-2 pt-4 border-top-vector">
+                <div class="col-span-12 md:col-span-5">
+                    <div class="flex items-center"><img class="w-6 mr-2" src="<?= $url ?>/assets/dealer/img/user_rounded.png"
+                                                        alt="">
+                        <h4 class="text-base color-vector font-medium my-0">Recipient information</h4>
+                    </div>
+                    <p class="text-base font-medium color-vector my-4 mx-0"><?= $name_info ?></p>
+                    <p class="checkout-color-unactive font-normal text-sm py-0 my-0">Address: <?= $address1 . "," . $country ?></p>
+                    <p class="checkout-color-unactive font-normal text-sm">Phone: <?= $phoneNumber ?></p>
+                </div>
+                <div class="col-span-1 md:block hidden">
+                    <div class="line-center m-auto"></div>
+                </div>
+                <div class="col-span-12 md:col-span-5">
+                    <div class="flex items-center"><img class="w-6 mr-2" src="<?= $url ?>/assets/dealer/img/card_method.png"
+                                                        alt="">
+                        <h4 class="text-base color-vector font-medium my-0">Payment method</h4>
+                    </div>
+                    <div
+                            class="checkout-color-unactive font-normal text-sm py-4 my-0 flex items-center">
+                        <img class="w-11 mr-3" src="<?= $url ?>/assets/dealer/img/payment_method_icon.png" alt=""> ***0933 |
+                        Expires 3/29
+                    </div>
+                </div>
+            </div>
         </div>
-    </section>
-</main>
-<?php get_footer() ?>
+        <div class="grid grid-cols-1 gap-4 mt-6 mb-4 mx-0">
+            <h4 class="font-medium text-xl leading-8 checkout-color-text py-0 my-0 text-left">Product
+                list (<?= $totalRecords ?>)</h4>
+        </div>
+        <div class="bg-white rounded-xl px-5">
+            <?php foreach ($decodedData as $key => $va) :
+                $idPro = $va['id'];
+                $price_sub += $va['price'] * $va['qty'];
+            ?>
+                <div class="py-6 grid grid-cols-7 gap-5 bd-line-bottom">
+                    <div
+                            class="2xl:col-span-1 xl:col-span-1 lg:col-span-1 sm:col-span-1 col-span-7 flex items-center border rounded-xl p-0 w-h-100 p-1">
+                        <img class="w-full" src="<?= $va['img'] ?>" alt="">
+                    </div>
+                    <div
+                            class="2xl:col-span-5 xl:col-span-5 lg:col-span-5 sm:col-span-5 col-span-5 grid grid-cols-11 flex">
+                        <div class="2xl:col-span-8 xl:col-span-6 lg:col-span-11 col-span-11 mb-0 mb-pr-2">
+                            <h5
+                                    class="font-medium leading-6 text-base checkout-color-text my-0 block title-pr">
+                                <?= $va['title'] ?>
+                            </h5>
+                            <div class="tag mt-2 flex">
+                                                <span
+                                                        class="gap-2 rounded-lg checkout-bg py-2 px-3 w-auto text-sm checkout-tag-color">
+                                                    Type: <?= $va['pack'] ?> Pack
+                                                </span>
+                            </div>
+                        </div>
+                        <div
+                                class="2xl:col-span-3 xl:col-span-5 lg:col-span-11 col-span-11 flex items-center xl:justify-end lg:justify-start md:justify-start">
+                            <div class="flex flex-col gap-1 justify-center items-center">
+                                <div class="flex items-center justify-start color-vector">
+                                    Quantity: <span> <?= $va['qty'] ?></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div
+                            class="2xl:col-span-1 xl:col-span-1 lg:col-span-1 sm:col-span-1 col-span-2 flex items-center justify-end">
+                        <div class="checkout-color-red-text font-medium">$<?= $va['price'] ?><span
+                                    class="checkout-color-red-text font-medium"
+                                    x-text="(currentVal*price).toFixed(2)"></span></div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <div class="2xl:col-span-4 xl:col-span-4 md:col-span-12 col-span-12">
+        <div class="info px-6 py-4 bg-white rounded-xl">
+            <h5 class="text-base checkout-color-text font-medium mb-5 text-left mt-0 p-0 ">
+                Payment information
+            </h5>
+            <div class="price">
+                <div class="flex items-center grid grid-cols-2 bd-line-bottom pb-3 mb-3">
+                    <span class="text-left checkout-tag-color text-sm">Sub total</span>
+                    <div class="flex justify-end">
+                        <span class="text-base checkout-color-text font-medium">$<?= $price_sub ?></span>
+                    </div>
+                </div>
+                <div class="flex items-center grid grid-cols-2 pb-3">
+                    <span class="text-left checkout-tag-color text-sm">Discount</span>
+                    <div class="flex justify-end">
+                        <span class="text-base checkout-color-text font-medium">$<?= $discount_price ?></span>
+                    </div>
+                </div>
+                <div class="flex items-center grid grid-cols-2 pb-3">
+                    <span class="text-left checkout-tag-color text-sm">Shipping fee</span>
+                    <div class="flex justify-end">
+                        <span class="text-base checkout-color-text font-medium">$<?= $transport_fee ?></span>
+                    </div>
+                </div>
+                <div class="flex items-center grid grid-cols-2 pb-0 mb-0">
+                    <span class="text-left checkout-tag-color text-sm">Total payment</span>
+                    <div class="flex justify-end">
+										<span
+                                                class="text-xl checkout-color-text font-medium checkout-color-red-text">$<?= $price_payment ?></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 <script !src="">
+    function myFunction(inputId) {
+        // Lấy input element
+        var copyText = document.getElementById(inputId);
 
+        copyText.style.display = "block";
+
+        // Select text
+        copyText.select();
+
+        try {
+            // Thực hiện copy
+            document.execCommand('copy');
+
+            // Thông báo
+            alert("<?php pll_e('Copied the text') ?>: " + copyText.value);
+        } catch (err) {
+            console.error('Copy error: ', err);
+        } finally {
+            // Ẩn input lại
+            copyText.style.display = "none";
+        }
+    }
 </script>
+<?php
+get_footer('dealer');
+?>

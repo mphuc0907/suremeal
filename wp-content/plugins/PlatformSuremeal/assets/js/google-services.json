@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "756300563081",
+    "firebase_url": "https://vnsupplement-2345d.firebaseio.com",
+    "project_id": "vnsupplement-2345d",
+    "storage_bucket": "vnsupplement-2345d.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:756300563081:android:f29a179b241b33727d3c58",
+        "android_client_info": {
+          "package_name": "com.wecangroup.vnsupplements"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "756300563081-0vhjkfomburiugjhv9o800fhbkl59abh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDX00kieCaY5_mgXzwZhSiA00KweM19HuA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "756300563081-0vhjkfomburiugjhv9o800fhbkl59abh.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "756300563081-9r8emh1mvoqurntochgt5efparhr4gd7.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.wecangroup.vnsupplements"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

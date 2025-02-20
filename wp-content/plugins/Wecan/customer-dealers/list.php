@@ -10,22 +10,38 @@ $rs = $wpdb->get_results("SELECT id FROM wp_account_dealers");
 $my_str = "WHERE 1=1";
 
 $keyword = isset($_REQUEST['keyword']) ? $_REQUEST['keyword'] : '';
-$status = isset($_REQUEST['status']) ? (int) $_REQUEST['status'] : 0;
-$rating = isset($_REQUEST['rating']) ? (int) $_REQUEST['rating'] : 0;
+$status = isset($_REQUEST['status']) ? (int) $_REQUEST['status'] : -1; // Changed default to -1 for "All"
+$date_from = isset($_REQUEST['date_from']) ? $_REQUEST['date_from'] : '';
+$date_to = isset($_REQUEST['date_to']) ? $_REQUEST['date_to'] : '';
 
 if (isset($_REQUEST['search'])) {
     $keyword = fixqQ($_REQUEST['keyword']);
     $status = (int) $_REQUEST['status'];
-    $rating = (int) $_REQUEST['rating'];
+    $date_from = $_REQUEST['date_from'];
+    $date_to = $_REQUEST['date_to'];
 
-    // Mở rộng điều kiện tìm kiếm
+    // Keyword search
     if (!empty($keyword)) {
         $my_str .= " AND (
             first_name LIKE '%" . $wpdb->esc_like($keyword) . "%' 
             OR last_name LIKE '%" . $wpdb->esc_like($keyword) . "%' 
             OR email LIKE '%" . $wpdb->esc_like($keyword) . "%'
         )";
-    }      
+    }
+
+    // Status filter
+    if ($status >= 0) {
+        $my_str .= " AND status = " . $status;
+    }
+
+    // Date range filter
+    if (!empty($date_from) && !empty($date_to)) {
+        $my_str .= " AND DATE(created_at) BETWEEN '" . date('Y-m-d', strtotime($date_from)) . "' AND '" . date('Y-m-d', strtotime($date_to)) . "'";
+    } else if (!empty($date_from)) {
+        $my_str .= " AND DATE(created_at) >= '" . date('Y-m-d', strtotime($date_from)) . "'";
+    } else if (!empty($date_to)) {
+        $my_str .= " AND DATE(created_at) <= '" . date('Y-m-d', strtotime($date_to)) . "'";
+    }
 }
 
 $recordcount = count_total_db("wp_account_dealers", $my_str);
@@ -96,9 +112,16 @@ add_admin_js('jquery-2.2.4.min.js');
                     class="count">(<?php echo $recordcount; ?>)</span></a></li>
     </ul>
     <form class="search-box flr" method="POST" action="<?php echo $module_path ?>">
-        <input class="sear_2" value="<?php if (isset($keyword))
-            echo $keyword; ?>" type="text" name="keyword"
-            placeholder="Keywords">
+        <select name="status">
+            <option value="-1">All Status</option>
+            <option value="0" <?php echo $status === 0 ? 'selected' : ''; ?>>Unapproved</option>
+            <option value="1" <?php echo $status === 1 ? 'selected' : ''; ?>>Approve</option>
+        </select>
+
+        <input type="date" name="date_from" value="<?php echo $date_from; ?>" placeholder="From Date">
+        <input type="date" name="date_to" value="<?php echo $date_to; ?>" placeholder="To Date">
+
+        <input class="sear_2" value="<?php echo isset($keyword) ? htmlspecialchars($keyword) : ''; ?>" type="text" name="keyword" placeholder="Keywords">
 
         <input type="submit" name="search" value="Filter" class="button" />
     </form>
@@ -110,29 +133,33 @@ add_admin_js('jquery-2.2.4.min.js');
         ORDER BY id DESC 
         LIMIT " . $beginpaging[0] . ",$pagesize
     ");
-
     ?>
+    
     <form class="" method="POST" action="<?php echo $module_path; ?>">
 
         <table class="wp-list-table widefat fixed striped posts">
             <thead>
                 <tr class="headline">
                     <th style="width:30px;text-align:center;">STT</th>
-                    <th>First name</th>
-                    <th>Last name</th>
-                    <th>Avatar</th>
+                    <th>Name</th>
+<!--                    <th>Avatar</th>-->
+                    <th>Phone</th>
                     <th>Email</th>
                     <th>Status</th>
+                    <th>Created at</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tfoot>
                 <tr class="headline">
                     <th style="width:30px;text-align:center;">STT</th>
-                    <th>First name</th>
-                    <th>Last name</th>
-                    <th>Avatar</th>
+                    <th>Name</th>
+<!--                    <th>Avatar</th>-->
+                    <th>Phone</th>
                     <th>Email</th>
                     <th>Status</th>
+                    <th>Created at</th>
+                    <th>Action</th>
                 </tr>
             </tfoot>
 
@@ -144,15 +171,17 @@ add_admin_js('jquery-2.2.4.min.js');
                 ?>
                 <tr>
                     <td><?= $i ?></td>
-                    <td><?= $customer->first_name ?></td>
-                    <td><?= $customer->last_name ?></td>
-                    <td><img class="avatar" src="<?= $customer->avatar ? $customer->avatar : $url . '/assets/image/dashboard/avatar-80.svg' ?>" alt=""></td>
+                    <td><?= $customer->first_name ?> <?= $customer->last_name ?></td>
+<!--                    <td><img class="avatar" src="--><?//= $customer->avatar ? $customer->avatar : $url . '/assets/image/dashboard/avatar-80.svg' ?><!--" alt=""></td>-->
+                    <td><?= $customer->phone ?></td>
                     <td><?= $customer->email ?></td>
                     <td>
                         <select class="statusUser" data-user-id="<?= $customer->id ?>">
-                           <?= getStatusDealed($customer->status) ?>
+                           <option value="0" <?= $customer->status == 0 ? 'selected' : '' ?>>Unapproved</option>
+                           <option value="1" <?= $customer->status == 1 ? 'selected' : '' ?>>Approve</option>
                         </select>
                     </td>
+                    <td><?= $customer->created_at ?></td>
                     <td><a href="<?php echo $rowlink; ?>" target="_blank">View detail</a></td>
                 </tr>
             <?php } ?>

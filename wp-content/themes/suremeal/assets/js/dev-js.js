@@ -49,7 +49,7 @@ function addToCart(thiss) {
             cart[i].pack = product.pack;
             cart[i].instock = product.instock;
             cart[i].qty += product.qty;
-            cart[i].select = false;
+            cart[i].select = true;
             console.log("Đã tăng số lượng sản phẩm:", cart[i]);
             break; // Thoát khỏi vòng lặp
         }
@@ -524,6 +524,12 @@ $(document).ready(function () {
     }
 
     // Khi checkbox "All" được chọn
+    // Khi load trang, tự động check checkbox "check-all"
+    $(document).ready(function () {
+        $('.cart-detail .check-all').prop('checked', true); // Đánh dấu checkbox
+        $('.cart-detail .check-all').trigger('change'); // Gọi sự kiện để cập nhật các checkbox con
+    });
+
     $('.cart-detail .check-all').on('change', function () {
         const $parentDiv = $(this).closest('.cart-detail');
         const isChecked = $(this).is(':checked');
@@ -535,6 +541,7 @@ $(document).ready(function () {
         updateCartSelection(isChecked, 'all');
         calculateTotal(); // Gọi hàm khi checkbox bị bỏ chọn
     });
+
 });
 
 // let dollar = parseFloat($('#vnd').val());

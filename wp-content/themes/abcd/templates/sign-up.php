@@ -54,18 +54,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Băm mật khẩu
         $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
+        // Tạo token cho user mới
+        $new_token = generate_unique_token();
+
         // Thêm dữ liệu vào bảng wp_account_users
         $data = array(
             'first_name' => $firstName,
             'last_name' => $lastName,
             'email' => $email,
-            'password' => $hashedPassword
+            'password' => $hashedPassword,
+            'token' => $new_token
         );
-        $format = array('%s', '%s', '%s', '%s');
+        $format = array('%s', '%s', '%s', '%s', '%s');
 
         if ($wpdb->insert($table, $data, $format)) {
-            // chuyển hướng sang đăng nhập
-            wp_send_json_success(array('redirect' => home_url('/sign-in')));
+            // Set cookie 
+            $expire = time() + (30 * 24 * 60 * 60); // 30 ngày
+            // setcookie('user_token', $new_token, [
+                //     'expires' => $expire,
+                //     'path' => '/',
+                //     'domain' => '',
+                //     'secure' => false,
+                //     'httponly' => true
+                // ]);
+                setcookie('user_token', $new_token, $expire, '/', '.' . $_SERVER['HTTP_HOST']);
+                setcookie('dealer_token', '', time() - 3600, '/', '.' . $_SERVER['HTTP_HOST']);
+
+            wp_send_json_success(array('redirect' => home_url()));
         } else {
             $errors['general'] = pll__('An error occurred while registering. Please try again.');
         }
@@ -137,7 +152,7 @@ get_header();
                             </div>
                         </form>
                         <p class="text-body-md-regular text-gray-9"><?php pll_e('Already have an account?') ?> <a href="<?= home_url() ?>/sign-in"
-                                class="font-medium text-secondary"><?php pll_e('Sign in') ?></a></p>
+                                class="font-medium text-secondary"><?php pll_e('Login') ?></a></p>
                         <hr class="divider">
                         <div class="w-full flex flex-col gap-4 items-center">
                             <p class="text-body-lg-medium text-gray-8"><?php pll_e('Or connect with:') ?></p>

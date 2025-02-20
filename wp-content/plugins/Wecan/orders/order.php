@@ -22,9 +22,14 @@ $mdlconf = array('title'=>'Order management');
 if($sub==''){
     include_once __DIR__ .'/list.php';
 
-}else if($sub=='edit'){
+}else if($sub == 'customer_orders_manager'){
+    include_once __DIR__ .'/customer-order.php';
+}else if($sub == 'dealer_orders_manager'){
+    include_once __DIR__ .'/dealer-order.php';
+}else if($sub == 'affiliate_orders_manager'){
+    include_once __DIR__ .'/affiliate-order.php';
+} else if($sub=='edit'){
     include_once __DIR__ .'/edit.php';
-
 }else if($sub=='add'){
 
     include_once __DIR__ .'/add.php';

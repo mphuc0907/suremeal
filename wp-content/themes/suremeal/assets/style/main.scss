@@ -442,39 +442,54 @@ select {
   pointer-events: none;
   &-title {
     color: #1f2237;
-    &:hover {
-      color: #ed1b24;
-    }
+    // &:hover {
+    //   color: #ed1b24;
+    // }
   }
   &-hover {
     color: #1f2237;
     p {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
+      gap: 10px;
       &::before {
         content: "";
         display: block;
-        min-width: 4px;
-        min-height: 4px;
-        margin: 10px 8px;
+        min-width: 20px;
+        min-height: 20px;
+        background: url(../../assets/image/icon/circle-check-20.svg);
+        background-repeat: no-repeat;
+        background-size: cover;
+        // margin: 10px 8px;
         border-radius: 100%;
-        background: #1f2237;
       }
     }
     &:hover {
       color: #0e74bc;
       p {
-        &::before {
-          background: #0e74bc;
-        }
+        // &::before {
+        //   background: #0e74bc;
+        // }
       }
     }
   }
-  &-mobile {
+
+  @media (max-width: 991px) {
+    position: unset;
+    transform: unset;
+    width: 100%;
+    pointer-events: unset;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: unset;
+    opacity: 1;
+    visibility: visible;
+  }
+  &.mobile {
     height: 0;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.6s ease;
+    transition: all 0.6s ease-in-out;
     &.show {
       height: fit-content;
       opacity: 1;
@@ -483,20 +498,45 @@ select {
     }
   }
 }
-
 .sub-wrap {
   // position: relative;
-  &:hover {
-    .sub-menu {
-      transition: all 0.6s ease;
-      opacity: 1;
-      visibility: visible;
-      pointer-events: unset;
-      &:hover {
-        transition: all 0.6s ease;
+  @media (min-width: 992px) {
+    &:hover {
+      .sub-menu {
+        transition: all 0.6s ease-in-out;
         opacity: 1;
         visibility: visible;
         pointer-events: unset;
+        &:hover {
+          transition: all 0.6s ease-in-out;
+          opacity: 1;
+          visibility: visible;
+          pointer-events: unset;
+        }
+      }
+    }
+  }
+}
+
+.sub-sub {
+  &-wrap {
+    max-height: 2.3lh;
+    overflow: hidden;
+    transition: all 0.6s ease-in-out;
+    border-radius: 8px;
+    .sub-sub-title {
+      p {
+        color: #1f2237;
+      }
+    }
+    &.show {
+      max-height: 1000px;
+      pointer-events: unset;
+      transition: all 0.6s ease-in-out;
+      .sub-sub-title {
+        p {
+          color: #0e74bc;
+        }
       }
     }
   }
@@ -518,6 +558,14 @@ select {
     @extend .truncate;
     -webkit-line-clamp: 4;
   }
+  &-5row {
+    @extend .truncate;
+    -webkit-line-clamp: 5;
+  }
+  &-6row {
+    @extend .truncate;
+    -webkit-line-clamp: 6;
+  }
 }
 
 .min-h {
@@ -529,6 +577,12 @@ select {
   }
   &-4lh {
     min-height: 4lh;
+  }
+  &-5lh {
+    min-height: 5lh;
+  }
+  &-6lh {
+    min-height: 6lh;
   }
 }
 
@@ -574,6 +628,10 @@ input.home-search {
   background-repeat: no-repeat;
   background-position: right 14px center;
   color: #373a51;
+  &.no-bg {
+    background-image: none;
+    position: relative;
+  }
   &::placeholder {
     color: #6b7280;
   }
@@ -1123,6 +1181,9 @@ a {
       @media screen and (max-width: 992px) {
         right: 24px;
       }
+      @media screen and (max-width: 552px) {
+        right: 0px;
+      }
       &:after {
         content: "";
         width: 48px;
@@ -1147,6 +1208,9 @@ a {
       left: 60px;
       @media screen and (max-width: 992px) {
         left: 24px;
+      }
+      @media screen and (max-width: 552px) {
+        left: 0px;
       }
       &:after {
         content: "";
@@ -1352,6 +1416,16 @@ hr {
     height: 1px;
     border: none;
     background: #d1d5db;
+    &.vertical {
+      width: 1px;
+      height: 100%;
+      &.mobile {
+        @media (max-width: 991px) {
+          width: 100%;
+          height: 1px;
+        }
+      }
+    }
   }
   &.divider-footer {
     width: 100%;
@@ -1584,6 +1658,15 @@ hr {
   border-radius: 8px;
   background: #e5e7eb;
   cursor: pointer;
+  &.home {
+    background: #f1f9fe;
+    color: #37514b;
+  }
+  &:hover {
+    font-weight: 600;
+    background: #fff;
+    color: #0e74bc;
+  }
   &.active {
     font-weight: 600;
     background: #fff;
@@ -1803,5 +1886,23 @@ hr {
         opacity: 1;
       }
     }
+  }
+}
+
+.sign-tab {
+  @extend .text-body-xl-regular;
+  color: #333333;
+  padding: 4px 12px;
+  border-bottom: 2px solid;
+  border-color: #b2b2b2;
+  &:hover {
+    @extend .text-body-xl-semibold;
+    color: #ed1b24;
+    border-color: #e02d2d;
+  }
+  &.active {
+    @extend .text-body-xl-semibold;
+    color: #ed1b24;
+    border-color: #e02d2d;
   }
 }

@@ -104,8 +104,8 @@ get_header();
                             <?php endif; ?>
                             <div class="flex flex-col gap-3">
                                 <label class="custom-checkbox">
-                                    <input type="radio" name="category" class="radio-blue" value="" 
-                                        <?php echo $category_id === 0 ? 'checked' : ''; ?> 
+                                    <input type="radio" name="category" class="radio-blue" value=""
+                                        <?php echo $category_id === 0 ? 'checked' : ''; ?>
                                         onchange="this.form.submit()">
                                     <p class="text-body-md-regular text-gray-8">All</p>
                                 </label>
@@ -165,8 +165,14 @@ get_header();
                             <?php if (!empty($sort_type)): ?>
                                 <input type="hidden" name="sort" value="<?php echo esc_attr($sort_type); ?>">
                             <?php endif; ?>
-                            <input type="text" name="search" class="w-full home-search radius-8 2xl:max-w-[386px]"
-                                placeholder="Search..." value="<?php echo esc_attr($search_query); ?>">
+
+                            <div class="relative 2xl:max-w-[386px]">
+                                <input type="text" name="search" class="w-full home-search no-bg radius-8 2xl:max-w-[386px]"
+                                    placeholder="Search..." value="<?php echo esc_attr($search_query); ?>">
+                                <button class="button bg-trans absolute right-6 top-[50%] translate-y-[-50%]" type="submit">
+                                    <figure class="w-4 h-4"><img src="<?= $url ?>/assets/image/icon/mag-glass.svg" alt=""></figure>
+                                </button>
+                            </div>
                         </form>
                         <div class="flex gap-4">
                             <p class="pt-2.5 text-body-md-medium text-gray-8 whitespace-nowrap">Sort by</p>
@@ -178,7 +184,7 @@ get_header();
                                     <input type="hidden" name="search" value="<?php echo esc_attr($search_query); ?>">
                                 <?php endif; ?>
                                 <div class="flex flex-wrap gap-3">
-                                    <button type="submit" name="sort" value="latest" 
+                                    <button type="submit" name="sort" value="latest"
                                         class="text-body-md-medium tab-item <?php echo $sort_type === 'latest' ? 'active' : ''; ?>">
                                         Latest
                                     </button>
@@ -234,7 +240,7 @@ get_header();
                         // Add current query parameters to pagination links
                         $current_url = add_query_arg(array());
                         $base = add_query_arg('paged', '%#%', $current_url);
-                        
+
                         echo paginate_links(array(
                             'base' => str_replace($big, '%#%', esc_url($base)),
                             'format' => '?paged=%#%',
@@ -253,14 +259,17 @@ get_header();
 </main>
 <?php get_footer() ?>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Scroll to results if there are filter parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('category') || urlParams.has('search') || urlParams.has('sort')) {
-        const resultsElement = document.getElementById('blog-results');
-        if (resultsElement) {
-            resultsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.addEventListener('DOMContentLoaded', function() {
+        // Scroll to results if there are filter parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('category') || urlParams.has('search') || urlParams.has('sort')) {
+            const resultsElement = document.getElementById('blog-results');
+            if (resultsElement) {
+                resultsElement.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
         }
-    }
-});
+    });
 </script>

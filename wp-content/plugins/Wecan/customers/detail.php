@@ -290,9 +290,9 @@ $myrows = $wpdb->get_results("SELECT * FROM wp_orders WHERE id_user = '{$idCusto
                                     <div class="list-product">
                                             <div class="morth-item">
                                                 <div class="morth-img">
-                                                    <figure>
-                                                        <img class="avatar" src="<?= $avatar ? $avatar : $url . '/assets/image/dashboard/avatar-80.svg' ?>" alt="">
-                                                    </figure>
+<!--                                                    <figure>-->
+<!--                                                        <img class="avatar" src="--><?//= $avatar ? $avatar : $url . '/assets/image/dashboard/avatar-80.svg' ?><!--" alt="">-->
+<!--                                                    </figure>-->
                                                     <div class="info">
                                                         <h4><?= $first_name ?> <?= $last_name ?></h4>
 

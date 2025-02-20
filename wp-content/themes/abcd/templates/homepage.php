@@ -43,7 +43,44 @@ $termsCateAll = get_terms(array(
     'order' => 'DESC',
     'hide_empty' => false, // default: true
 ));
+function get_affiliate_discount($product_id)
+{
+    if (!isset($_COOKIE['distribution_code'])) {
+        return null;
+    }
 
+    global $wpdb;
+    $distribution_code = sanitize_text_field($_COOKIE['distribution_code']);
+
+    $affiliate = $wpdb->get_row($wpdb->prepare(
+        "SELECT * FROM wp_affiliate WHERE distribution_code = %s AND status = 1",
+        $distribution_code
+    ));
+
+    if (!$affiliate) {
+        return null;
+    }
+
+    // Decode the product information JSON
+    $product_info = json_decode($affiliate->product_infomation, true);
+    if (!is_array($product_info)) {
+        return null;
+    }
+
+    // Find if this product is in the affiliate's product list
+    $product_entry = array_filter($product_info, function ($item) use ($product_id) {
+        return $item['id'] == $product_id;
+    });
+
+    if (empty($product_entry)) {
+        return null;
+    }
+
+    return [
+        'discount_percentage' => $affiliate->discount,
+        'product_price' => reset($product_entry)['price']
+    ];
+}
 // Function to get dealer discount for a specific product
 function get_dealer_discount($dealer_id, $product_id)
 {
@@ -244,23 +281,47 @@ get_header();
                                     $instock = 0;
                                 }
 
-                                // Get dealer discount if dealer is logged in
-                                $dealer_discount = $dealer_id ? get_dealer_discount($dealer_id, $value->ID) : null;
-
                                 // Calculate final price based on dealer discount
                                 $final_price = $price;
-                                if ($dealer_discount) {
-                                    // Calculate dealer discount price from original price
-                                    $dealer_price = calculate_dealer_price($price, $dealer_discount);
-                                    // If there's a sale price, compare it with dealer price
-                                    if ($sale_price) {
-                                        $final_price = min($dealer_price, $sale_price);
+                                $show_original_price = false;
+
+                                if ($authenticated_dealer) {
+                                    // If dealer is logged in, use dealer pricing logic
+                                    $dealer_discount = get_dealer_discount($dealer_id, $value->ID);
+                                    if ($dealer_discount) {
+                                        $dealer_price = calculate_dealer_price($price, $dealer_discount);
+                                        if ($sale_price) {
+                                            $final_price = min($dealer_price, $sale_price);
+                                        } else {
+                                            $final_price = $dealer_price;
+                                        }
+                                        $show_original_price = $final_price < $price;
                                     } else {
-                                        $final_price = $dealer_price;
+                                        $final_price = $sale_price ? $sale_price : $price;
+                                        $show_original_price = $sale_price && $sale_price < $price;
                                     }
                                 } else {
-                                    // If no dealer discount, use sale price if available
-                                    $final_price = $sale_price ? $sale_price : $price;
+                                    // Check for affiliate discount if no dealer is logged in
+                                    $affiliate_info = get_affiliate_discount($value->ID);
+                                    if ($affiliate_info) {
+                                        // Calculate affiliate discounted price
+                                        $affiliate_base_price = floatval($affiliate_info['product_price']);
+                                        $discount_percentage = floatval($affiliate_info['discount_percentage']);
+                                        $affiliate_price = $affiliate_base_price * (1 - ($discount_percentage / 100));
+
+                                        // Compare with sale price if exists
+                                        if ($sale_price) {
+                                            $final_price = min($affiliate_price, $sale_price);
+                                        } else {
+                                            $final_price = $affiliate_price;
+                                        }
+                                        $show_original_price = $final_price < $affiliate_base_price;
+                                        $price = $affiliate_base_price; // Show affiliate base price as original price
+                                    } else {
+                                        // No affiliate discount, use regular sale price logic
+                                        $final_price = $sale_price ? $sale_price : $price;
+                                        $show_original_price = $sale_price && $sale_price < $price;
+                                    }
                                 }
                             ?>
                                 <div class="swiper-slide w-full">
@@ -310,7 +371,7 @@ get_header();
                                             </p>
                                             <div class="flex gap-3 items-center">
                                                 <span class="text-body-sm-regular text-neutral-500"><?php pll_e('From') ?></span>
-                                                <?php if ($final_price < $price): ?>
+                                                <?php if ($show_original_price): ?>
                                                     <div class="flex items-center gap-2">
                                                         <p class="text-body-md-medium text-neutral-500 line-through">
                                                             <?= formatBalance($price) ?>
@@ -405,23 +466,47 @@ get_header();
                                 endif;
                                 $matching_categories = array_intersect(['SureMeal', 'Supplement Depot'], $category_names);
 
-                                // Get dealer discount if dealer is logged in
-                                $dealer_discount = $dealer_id ? get_dealer_discount($dealer_id, $product_post->ID) : null;
-
                                 // Calculate final price based on dealer discount
                                 $final_price = $price;
-                                if ($dealer_discount) {
-                                    // Calculate dealer discount price from original price
-                                    $dealer_price = calculate_dealer_price($price, $dealer_discount);
-                                    // If there's a sale price, compare it with dealer price
-                                    if ($sale_price) {
-                                        $final_price = min($dealer_price, $sale_price);
+                                $show_original_price = false;
+
+                                if ($authenticated_dealer) {
+                                    // If dealer is logged in, use dealer pricing logic
+                                    $dealer_discount = get_dealer_discount($dealer_id, $product->ID);
+                                    if ($dealer_discount) {
+                                        $dealer_price = calculate_dealer_price($price, $dealer_discount);
+                                        if ($sale_price) {
+                                            $final_price = min($dealer_price, $sale_price);
+                                        } else {
+                                            $final_price = $dealer_price;
+                                        }
+                                        $show_original_price = $final_price < $price;
                                     } else {
-                                        $final_price = $dealer_price;
+                                        $final_price = $sale_price ? $sale_price : $price;
+                                        $show_original_price = $sale_price && $sale_price < $price;
                                     }
                                 } else {
-                                    // If no dealer discount, use sale price if available
-                                    $final_price = $sale_price ? $sale_price : $price;
+                                    // Check for affiliate discount if no dealer is logged in
+                                    $affiliate_info = get_affiliate_discount($product->ID);
+                                    if ($affiliate_info) {
+                                        // Calculate affiliate discounted price
+                                        $affiliate_base_price = floatval($affiliate_info['product_price']);
+                                        $discount_percentage = floatval($affiliate_info['discount_percentage']);
+                                        $affiliate_price = $affiliate_base_price * (1 - ($discount_percentage / 100));
+
+                                        // Compare with sale price if exists
+                                        if ($sale_price) {
+                                            $final_price = min($affiliate_price, $sale_price);
+                                        } else {
+                                            $final_price = $affiliate_price;
+                                        }
+                                        $show_original_price = $final_price < $affiliate_base_price;
+                                        $price = $affiliate_base_price; // Show affiliate base price as original price
+                                    } else {
+                                        // No affiliate discount, use regular sale price logic
+                                        $final_price = $sale_price ? $sale_price : $price;
+                                        $show_original_price = $sale_price && $sale_price < $price;
+                                    }
                                 }
                         ?>
                                 <div class="swiper-slide w-full">
@@ -481,7 +566,7 @@ get_header();
                                                 </p>
                                                 <div class="flex gap-3 items-center">
                                                     <span class="text-body-sm-regular text-neutral-500"><?php pll_e('From') ?></span>
-                                                    <?php if ($final_price < $price): ?>
+                                                    <?php if ($show_original_price): ?>
                                                         <div class="flex items-center gap-2">
                                                             <p class="text-body-md-medium text-neutral-500 line-through">
                                                                 <?= formatBalance($price) ?>
@@ -662,23 +747,47 @@ get_header();
                                     }
                                     $sale_price = get_field('sale_price', $product->ID);
 
-                                    // Get dealer discount if dealer is logged in
-                                    $dealer_discount = $dealer_id ? get_dealer_discount($dealer_id, $product->ID) : null;
-
                                     // Calculate final price based on dealer discount
                                     $final_price = $price;
-                                    if ($dealer_discount) {
-                                        // Calculate dealer discount price from original price
-                                        $dealer_price = calculate_dealer_price($price, $dealer_discount);
-                                        // If there's a sale price, compare it with dealer price
-                                        if ($sale_price) {
-                                            $final_price = min($dealer_price, $sale_price);
+                                    $show_original_price = false;
+
+                                    if ($authenticated_dealer) {
+                                        // If dealer is logged in, use dealer pricing logic
+                                        $dealer_discount = get_dealer_discount($dealer_id, $product->ID);
+                                        if ($dealer_discount) {
+                                            $dealer_price = calculate_dealer_price($price, $dealer_discount);
+                                            if ($sale_price) {
+                                                $final_price = min($dealer_price, $sale_price);
+                                            } else {
+                                                $final_price = $dealer_price;
+                                            }
+                                            $show_original_price = $final_price < $price;
                                         } else {
-                                            $final_price = $dealer_price;
+                                            $final_price = $sale_price ? $sale_price : $price;
+                                            $show_original_price = $sale_price && $sale_price < $price;
                                         }
                                     } else {
-                                        // If no dealer discount, use sale price if available
-                                        $final_price = $sale_price ? $sale_price : $price;
+                                        // Check for affiliate discount if no dealer is logged in
+                                        $affiliate_info = get_affiliate_discount($product->ID);
+                                        if ($affiliate_info) {
+                                            // Calculate affiliate discounted price
+                                            $affiliate_base_price = floatval($affiliate_info['product_price']);
+                                            $discount_percentage = floatval($affiliate_info['discount_percentage']);
+                                            $affiliate_price = $affiliate_base_price * (1 - ($discount_percentage / 100));
+
+                                            // Compare with sale price if exists
+                                            if ($sale_price) {
+                                                $final_price = min($affiliate_price, $sale_price);
+                                            } else {
+                                                $final_price = $affiliate_price;
+                                            }
+                                            $show_original_price = $final_price < $affiliate_base_price;
+                                            $price = $affiliate_base_price; // Show affiliate base price as original price
+                                        } else {
+                                            // No affiliate discount, use regular sale price logic
+                                            $final_price = $sale_price ? $sale_price : $price;
+                                            $show_original_price = $sale_price && $sale_price < $price;
+                                        }
                                     }
                                 ?>
                                     <div class="swiper-slide w-full supplement-pro"
@@ -725,7 +834,7 @@ get_header();
                                                     </p>
                                                     <div class="flex gap-3 items-center">
                                                         <span class="text-body-sm-regular text-neutral-500"><?php pll_e('From') ?></span>
-                                                        <?php if ($final_price < $price): ?>
+                                                        <?php if ($show_original_price): ?>
                                                             <div class="flex items-center gap-2">
                                                                 <p class="text-body-md-medium text-neutral-500 line-through">
                                                                     <?= formatBalance($price) ?>

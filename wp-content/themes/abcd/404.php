@@ -1,3 +1,22 @@
+<?php
+global $wpdb;
+$current_uri = str_replace('/', '', $_SERVER['REQUEST_URI']);
+
+// Kiểm tra xem uri hiện có có phải là link affiliate hay không
+//$check_campaign = $wpdb->get_row("SELECT * FROM wp_affiliate WHERE shortlink = '{$current_uri}'" . not_deleted);
+$check_campaign = $wpdb->get_row($wpdb->prepare("SELECT * FROM wp_affiliate WHERE shortlink = %s", $current_uri));
+
+if(!empty($check_campaign)) {
+
+
+//    if(!empty($campaign)) {
+    $current_request = $check_campaign->domain;
+
+    wp_redirect($current_request . '/product?type=affiliate&distribution_code=' . $check_campaign->distribution_code);
+//    }
+}
+?>
+
 <?php get_header(); ?>
 
 <div class="container">

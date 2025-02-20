@@ -111,11 +111,7 @@ if ($status == 1) {
                                             <p class="text-body-md-medium text-gray-8">Order code:</p>
                                             <p class="text-body-md-medium text-neutral-500 order_code"><?= $code ?></p>
                                             <input type="text" value="<?= $code ?>" id="myInput<?= $code ?>" style="display: none">
-                                            <button class="button button-trans p-0" onclick="myFunction('myInput<?= $code ?>')">
-                                                <figure class="w-5 h-5"><img src="<?= $url ?>/assets/image/icon/duplicate.svg"
-                                                        alt="icon">
-                                                </figure>
-                                            </button>
+                                            <img class="w-5 h-auto ml-2" style="cursor: pointer;" onclick="myFunction('myInput_completed<?= $code ?>')" src="<?= $url ?>/dist/img/copy.svg" alt="">
                                         </div>
                                     </div>
                                     <div class="flex items-center gap-4">
@@ -257,17 +253,13 @@ if ($status == 1) {
                                             <div class="flex-1 flex flex-col gap-2">
                                                 <h2 class="text-body-md-medium text-gray-8 truncate-2row"><?= $va['title'] ?></h2>
                                                 <div class="neutral-200 text-body-sm-regular text-gray-7">
-                                                    Type: <?= get_field('quantity', $idPro) ?> Pack
+                                                    Type: <?= $va['pack'] ?> Pack
                                                 </div>
                                             </div>
                                         </div>
                                         <p class="text-body-md-regular text-gray-8">Quantity: <?= $va['qty'] ?></p>
 
-                                        <p class="text-body-md-medium text-primary"><?php if (empty($sale_price)) {
-                                                                                        echo formatBalance($price);
-                                                                                    } else {
-                                                                                        echo formatBalance($sale_price);
-                                                                                    } ?></p>
+                                        <p class="text-body-md-medium text-primary"><?= formatBalance($va['price']); ?></p>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
@@ -310,5 +302,20 @@ if ($status == 1) {
 </main>
 <?php get_footer() ?>
 <script !src="">
+    function myFunction(inputId) {
+        var copyText = document.getElementById(inputId);
+
+        if (!copyText) {
+            console.error('Không tìm thấy phần tử input với ID:', inputId);
+            return;
+        }
+
+        // Copy bằng Clipboard API
+        navigator.clipboard.writeText(copyText.value).then(() => {
+            alert("<?php pll_e('Copied the text') ?>: " + copyText.value);
+        }).catch(err => {
+            console.error('Lỗi khi copy:', err);
+        });
+    }
 
 </script>

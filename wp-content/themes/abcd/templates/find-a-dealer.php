@@ -100,7 +100,12 @@ get_header();
                             </div>
                         </div>
                         <div class="tab-item-view">
-                            <input type="text" id="dealer-search-input" class="home-search" placeholder="<?php pll_e('Search dealer name, zip code, or address') ?>">
+                            <div class="relative w-full">
+                                <input type="text" id="dealer-search-input" class="home-search no-bg" placeholder="<?php pll_e('Search dealer name, zip code, or address') ?>">
+                                <button class="button bg-trans absolute right-6 top-[50%] translate-y-[-50%]" type="submit">
+                                    <figure class="w-4 h-4"><img src="<?= $url ?>/assets/image/icon/mag-glass.svg" alt=""></figure>
+                                </button>
+                            </div>
 
                             <div class="w-full relative flex items-center or">
                                 <hr class="divider">
@@ -180,7 +185,7 @@ get_header();
                             } else {
                                 $url_map = 'https://www.google.com/maps/place/?q=' . urlencode($dealer->address);
                             }
-                            
+
                             $open_time = strtotime($dealer->open_at);
                             $close_time = strtotime($dealer->close_at);
                         ?>
@@ -236,12 +241,12 @@ get_header();
 </main>
 <?php get_footer() ?>
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', function() {
         const stateSelect = document.getElementById('state');
         const citySelect = document.getElementById('city');
         const jsonUrl = "<?php echo get_template_directory_uri(); ?>/assets/state-and-city.json";
         // console.log(jsonUrl);
-        
+
 
         // Fetch the JSON file and populate the states
         fetch(jsonUrl)
@@ -258,7 +263,7 @@ get_header();
             .catch(error => console.error('Error fetching JSON:', error));
 
         // Handle state selection change
-        stateSelect.addEventListener('change', function () {
+        stateSelect.addEventListener('change', function() {
             const selectedState = stateSelect.value;
 
             // Clear and reset city dropdown
@@ -315,11 +320,11 @@ get_header();
                 const zipCode = item.getAttribute('data-zip');
 
                 // Check all filter conditions
-                const matchSearch = !searchTerm || 
-                    name.includes(searchTerm) || 
-                    address.includes(searchTerm) || 
+                const matchSearch = !searchTerm ||
+                    name.includes(searchTerm) ||
+                    address.includes(searchTerm) ||
                     zipCode.includes(searchTerm);
-                    
+
                 const matchState = !selectedState || state === selectedState;
                 const matchCity = !selectedCity || city === selectedCity;
 
@@ -366,7 +371,7 @@ get_header();
         // Handle state selection change
         stateSelect.addEventListener('change', function() {
             const selectedState = this.value;
-            
+
             // Reset and disable city dropdown
             citySelect.innerHTML = '<option value="">Select City</option>';
             citySelect.disabled = true;
@@ -405,7 +410,7 @@ get_header();
                 radio.addEventListener('click', function() {
                     const allDealerDetails = dealerDetailsContainer.querySelectorAll('.w-full.rounded-xl.bg-white');
                     allDealerDetails.forEach(detail => detail.classList.add('hidden'));
-                    
+
                     const correspondingDetail = allDealerDetails[index];
                     if (correspondingDetail) {
                         correspondingDetail.classList.remove('hidden');
@@ -416,7 +421,7 @@ get_header();
 
         // Initial setup
         attachDealerRadioListeners();
-        
+
         // Select first dealer by default
         const firstDealer = document.querySelector('input[name="bill"]');
         if (firstDealer) {
@@ -447,7 +452,7 @@ get_header();
             tab.addEventListener('click', function() {
                 // Remove active class from all tabs
                 tabs.forEach(t => t.classList.remove('active'));
-                
+
                 // Add active class to clicked tab
                 this.classList.add('active');
 
@@ -608,8 +613,7 @@ get_header();
                     }
                     dealerList.innerHTML = `<p class="text-center text-red-500">${errorMessage}</p>`;
                     dealerCount.textContent = 'Could not find your location';
-                },
-                {
+                }, {
                     enableHighAccuracy: true,
                     timeout: 5000,
                     maximumAge: 0
@@ -620,12 +624,12 @@ get_header();
         // Initial event listeners for dealer radios
         attachDealerRadioListeners(dealerRadios);
 
-    // Ensure first dealer is selected by default
-    if (dealerRadios.length > 0) {
-        dealerRadios[0].checked = true;
-        dealerRadios[0].dispatchEvent(new Event('click'));
-    }
-});
+        // Ensure first dealer is selected by default
+        if (dealerRadios.length > 0) {
+            dealerRadios[0].checked = true;
+            dealerRadios[0].dispatchEvent(new Event('click'));
+        }
+    });
 
     document.addEventListener('DOMContentLoaded', function() {
         const viewMoreBtn = document.getElementById('view-more');

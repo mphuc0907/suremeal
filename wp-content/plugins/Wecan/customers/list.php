@@ -1,6 +1,9 @@
 <?php
 include __DIR__ . "/../includes/padding.php";
+// Include XLSX generator library
+
 $url = get_template_directory_uri();
+
 //-------del-------------
 action_list_del("wp_account_users");
 $pagesize = 20;
@@ -43,6 +46,8 @@ add_admin_css('main.css');
 add_admin_js('jquery-2.2.4.min.js');
 
 // Loại tài khoản
+
+// Export ex
 
 ?>
 <style>
@@ -106,22 +111,29 @@ add_admin_js('jquery-2.2.4.min.js');
     $myrows = $wpdb->get_results("
         SELECT * 
         FROM wp_account_users 
-        " . $my_str . " 
+        " . $my_str . "
         ORDER BY id DESC 
         LIMIT " . $beginpaging[0] . ",$pagesize
     ");
     ?>
-    <form class="" method="POST" action="<?php echo $module_path; ?>">
-
+    <div class="wrap" style="margin-top: 60px;">
+        <form method="POST">
+            <?php wp_nonce_field('export_csv_action', 'export_csv_nonce'); ?>
+            <input type="submit" name="export_csv" value="Export CSV" class="button button-primary">
+        </form>
+<!--        <a href="export.php" class="btn btn-success"></a>-->
+    </div>
+    <form class="" method="POST" action="<?php echo $module_path; ?>" style="margin-top: 20px;"> 
         <table class="wp-list-table widefat fixed striped posts">
             <thead>
                 <tr class="headline">
                     <th style="width:30px;text-align:center;">STT</th>
                     <th>First name</th>
                     <th>Last name</th>
-                    <th>Avatar</th>
+<!--                    <th>Avatar</th>-->
                     <th>Email</th>
-                    <th>Provider</th>                           
+                    <th>Provider</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tfoot>
@@ -129,15 +141,22 @@ add_admin_js('jquery-2.2.4.min.js');
                     <th style="width:30px;text-align:center;">STT</th>
                     <th>First name</th>
                     <th>Last name</th>
-                    <th>Avatar</th>
+<!--                    <th>Avatar</th>-->
                     <th>Email</th>
                     <th>Provider</th>
+                    <th>Action</th>
                 </tr>
             </tfoot>
 
             <?php
             $i = 0;
+            $inactiveCustomers = [];
+
             foreach ($myrows as $customer) {
+                if ($customer->status == 0) {
+                    $inactiveCustomers[] = $customer;
+                    continue;
+                }
                 $i++;
                 $rowlink = $module_path . '&sub=detail&id=' . $customer->id;
                 ?>
@@ -145,9 +164,26 @@ add_admin_js('jquery-2.2.4.min.js');
                     <td><?= $i ?></td>
                     <td><?= $customer->first_name ?></td>
                     <td><?= $customer->last_name ?></td>
-                    <td><img class="avatar" src="<?= $customer->avatar ? $customer->avatar : $url . '/assets/image/dashboard/avatar-80.svg' ?>" alt=""></td>
                     <td><?= $customer->email ?></td>
                     <td><?= $customer->provider ?></td>
+                    <td>
+                        <input type="button" value="Deactivate user" data-idUser="<?= $customer->id ?>" class="button btn-remover-user" >
+                    </td>
+                    <td><a href="<?php echo $rowlink; ?>" target="_blank">View detail</a></td>
+                </tr>
+            <?php }
+
+            foreach ($inactiveCustomers as $customer) {
+                $i++;
+                $rowlink = $module_path . '&sub=detail&id=' . $customer->id;
+                ?>
+                <tr style="background: #ff000099">
+                    <td><?= $i ?></td>
+                    <td><?= $customer->first_name ?></td>
+                    <td><?= $customer->last_name ?></td>
+                    <td><?= $customer->email ?></td>
+                    <td><?= $customer->provider ?></td>
+                    <td></td>
                     <td><a href="<?php echo $rowlink; ?>" target="_blank">View detail</a></td>
                 </tr>
             <?php } ?>
@@ -160,7 +196,52 @@ add_admin_js('jquery-2.2.4.min.js');
 </div>
 
 <div class="box-alert"></div>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.14.5/sweetalert2.min.css" integrity="sha512-Xxs33QtURTKyRJi+DQ7EKwWzxpDlLSqjC7VYwbdWW9zdhrewgsHoim8DclqjqMlsMeiqgAi51+zuamxdEP2v1Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sweetalert2/11.14.5/sweetalert2.min.js" integrity="sha512-JCDnPKShC1tVU4pNu5mhCEt6KWmHf0XPojB0OILRMkr89Eq9BHeBP+54oUlsmj8R5oWqmJstG1QoY6HkkKeUAg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
 <?php
 add_admin_js('common.js');
 ?>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+
+    $('.btn-remover-user').on('click', function() {
+        let id_user = $(this).attr('data-idUser');
+        Swal.fire({
+            title: 'Are you sure it\'s disabled?',
+            showDenyButton: true,
+            confirmButtonText: `Deactivate`,
+            denyButtonText: `No`,
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '<?php echo admin_url('admin-ajax.php'); ?>',
+                    type: 'POST',
+                    data: {
+                        'id_user': id_user,
+                        'action': "deleteUser",
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.status === 1) {
+                            Swal.fire({
+                                icon: 'success',
+                                text: response.mess,
+                            }).then(() => {
+                                location.reload();  // Reload the page after the alert closes
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'warning',
+                                text: response.mess,
+                            });
+                        }
+                    }
+                });
+            }
+        });
+    });
+</script>

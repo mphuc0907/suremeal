@@ -1,11 +1,11 @@
 <?php /* Template Name: Point-Management */ ?>
 <?php
-$authenticated_dealer = validate_dealer_token();
-if (!isset($_COOKIE['dealer_token']) || !$authenticated_dealer || $authenticated_dealer->status != 2) {
+$authenticated_user = validate_user_token();
+if (!(isset($_COOKIE['user_token']) && $authenticated_user->type == 2)) {
     wp_redirect(home_url());
     exit;
 }
-$status = $authenticated_dealer->status;
+$type = $authenticated_user->type;
 
 $url = get_template_directory_uri();
 get_header();
@@ -20,7 +20,7 @@ get_header();
                 <li class="flex items-center pt-4 pb-4 pl-6 item-f my-order">
                 <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/dealer-order-info"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/cart.png" alt=""><img class="mr-3 w-6 active hidden" src="<?= $url ?>/assets/dealer/img/cart_ac.png " alt=""><span class="menu-item">My orders</span></a>
                 </li>
-                <?php if($status == 2): ?>
+                <?php if($type == 2): ?>
                     <li class="flex items-center pt-4 pb-4 pl-6 item-f management">
                     <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/dealer-affiliate-order"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/tabler_shopping-bag-discount.png" alt=""><img class="mr-3 w-6 active hidden" src="<?= $url ?>/assets/dealer/img/tabler_shopping-bag-discount_ac.png" alt=""><span class="menu-item">Affiliate orders</span></a>
                     </li>
@@ -47,7 +47,7 @@ get_header();
                     <li class="mt-2">
                         <a class="no-underline text-sm" href="<?= home_url() ?>/dealer-business-informmation">Business information</a>
                     </li>
-                    <?php if($status == 2): ?>
+                    <?php if($type == 2): ?>
                         <li class="mt-2">
                             <a class="no-underline text-sm" href="<?= home_url() ?>/dealer-bank-informmation">Bank account information</a>
                         </li>

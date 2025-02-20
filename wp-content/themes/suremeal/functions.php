@@ -280,3 +280,4 @@ add_action('admin_head', 'fix_svg');
 
 require get_template_directory() . '/functions_sang.php';
 require get_template_directory() . '/functions-phuc.php';
+require get_template_directory() . '/function-admin.php';

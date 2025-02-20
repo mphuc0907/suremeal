@@ -42,5 +42,4 @@ countdown.init();
 // To display the countdown in the console every second  
 setInterval(() => {  
   const { minutes, seconds } = countdown.time();  
-  console.log(`${minutes}:${seconds}`);  
 }, 1000);

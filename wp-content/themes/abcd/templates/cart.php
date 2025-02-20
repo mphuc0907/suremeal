@@ -12,10 +12,100 @@ $list_voucher = $wpdb->get_results("
     WHERE `status` = 1 
     AND `end_date` > '$current_time'
 ");
+$authenticated_dealer = validate_dealer_token();
+$dealer_id = null;
+if ($authenticated_dealer) {
+    $dealer_id = $authenticated_dealer->ID;
+}
+// Function to get dealer discount for a specific product
+function get_dealer_discount($dealer_id, $product_id)
+{
+    global $wpdb;
+    $discount = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT * FROM wp_discount_dealer 
+            WHERE id_dealer = %d AND product = %d",
+            $dealer_id,
+            $product_id
+        )
+    );
+    return $discount;
+}
 
+// Function to calculate final price with dealer discount
+function calculate_dealer_price($original_price, $discount)
+{
+    if (!$discount) return false;
+
+    if ($discount->discount_type == 0) {
+        // Fixed amount discount
+        return max(0, $original_price - $discount->discount_amount);
+    } else {
+        // Percentage discount
+        $discount_amount = $original_price * ($discount->discount_amount / 100);
+        return max(0, $original_price - $discount_amount);
+    }
+}
+$products_same_type = [];
+// Lấy tất cả products_of_the_same_type cho các sản phẩm có thể có trong cart
+$all_products = get_posts(array(
+    'post_type' => 'product',
+    'posts_per_page' => -1,
+    'fields' => 'ids'
+));
+
+foreach($all_products as $product_id) {
+    $same_type = get_field('products_of_the_same_type', $product_id);
+    if ($same_type) {
+        // Create array to store products with additional fields
+        $products_with_fields = [];
+        
+        foreach ($same_type as $product) {
+            // Get the additional fields
+            $quantity = get_field('quantity', $product->ID);
+            $price = get_field('price', $product->ID);
+            $sale_price = get_field('sale_price', $product->ID);
+            $instock = get_field('instock', $product->ID);
+            $list_promotion = get_field('list_promotion', $product->ID);
+            $permalink = get_permalink($product->ID);
+
+            // Get dealer discount if dealer is logged in
+            $dealer_discount = $dealer_id ? get_dealer_discount($dealer_id, $product->ID) : null;
+
+            // Calculate final price based on dealer discount
+            $final_price = $price;
+            if ($dealer_discount) {
+                // Calculate dealer discount price from original price
+                $dealer_price = calculate_dealer_price($price, $dealer_discount);
+                // If there's a sale price, compare it with dealer price
+                if ($sale_price) {
+                    $final_price = min($dealer_price, $sale_price);
+                } else {
+                    $final_price = $dealer_price;
+                }
+            } else {
+                // If no dealer discount, use sale price if available
+                $final_price = $sale_price ? $sale_price : $price;
+            }
+            
+            // Add the fields to the product object
+            $product_data = (array) $product;  // Convert to array to add new properties
+            $product_data['quantity'] = $quantity;
+            $product_data['price'] = $final_price;
+            $product_data['instock'] = $instock;
+            $product_data['list_promotion'] = $list_promotion;
+            $product_data['permalink'] = $permalink;
+            
+            $products_with_fields[] = $product_data;
+        }
+        
+        $products_same_type[$product_id] = $products_with_fields;
+    }
+}
+$products_same_type_json = json_encode($products_same_type);
+// var_dump($products_same_type_json);
 $lang = ICL_LANGUAGE_CODE;
 ?>
-<main class="bg-[#EEF0F6]">
     <main class="bg-[#EEF0F6]">
         <section class="py-6">
             <div class="container">
@@ -59,6 +149,12 @@ $lang = ICL_LANGUAGE_CODE;
             .rotate-icon.active {
                 transform: rotate(180deg);
                 transition: all 0.5s ease-in-out;
+            }
+
+            select option:disabled {
+                color: #9CA3AF;
+                background-color: #F3F4F6;
+                cursor: not-allowed;
             }
         </style>
         <section class="pb-20">
@@ -119,6 +215,248 @@ $lang = ICL_LANGUAGE_CODE;
     </main>
     <?php get_footer() ?>
     <!-- script offer js -->
+    <script>
+        function showCart() {
+            let dataSave = [];
+
+            if (localStorage.getItem('cart')) { // Lấy thông tin giỏ hàng từ loacl
+                let cartLocal = localStorage.getItem('cart') ? localStorage.getItem('cart') : "";
+                var cart = JSON.parse(localStorage.getItem("cart")) || [];
+
+                // Khởi tạo các biến tổng
+                var totalItems = cart.length; // Số sản phẩm khác nhau
+                dataSave = cartLocal ? JSON.parse(cartLocal) : [];
+                // dataSave = $.grep(dataSave, function (e) {
+                //     return e.id != dataID;
+                // });
+                $(".cart-notfound").addClass("d-none");
+                dataSave.sort(function (a, b) { // Gom nhóm id pro theo thứ tự tăng dần
+                    return parseInt(a["id"]) - parseInt(b["id"]);
+                });
+                var html = "";
+                var htmltatol = "";
+                var htmldetal = "<div class=\"w-full flex gap-6 items-center justify-between px-6 py-4 rounded-t-xl bg-white\">\n" +
+                    "                            <label class=\"custom-checkbox\">\n" +
+                    "                                <div class=\"checkbox-container\">\n" +
+                    "                                    <input name=\"product_chose\" name=\"product_chose\" class='check-all' type=\"checkbox\">\n" +
+                    "                                    <span class=\"checkmark\"></span>\n" +
+                    "                                </div>\n" +
+                    "                                <p class=\"text-body-md-medium text-gray-9 cart-count-in\">Select all (" + totalItems + ")</p>\n" +
+                    "                            </label>\n" +
+                    "\n" +
+                    "                            <button class=\"button bg-trans bg-trans-all\">\n" +
+                    "                                <figure class=\"w-6 h-6\"><img src=\"https://suremeal.qixtech.com/wp-content/themes/abcd/assets/image/icon/trash.svg\" alt=\"icon\">\n" +
+                    "                                </figure>\n" +
+                    "                            </button>\n" +
+                    "                        </div>";
+                let money = 0;
+                let qtytotal = 0;
+                var indent = 1;
+                // console.log(dataSave);
+                dataSave.map(function (value, index) {
+                    let link = value["link"];
+                    let link_img = value["img"];
+                    let pri = value["price"];
+                    let qty = value["qty"];
+                    let title = value["title"];
+                    qtytotal += qty;
+                    let id = value["id"];
+                    let select = value["select"];
+                    let pack = value["pack"];
+                    let promo = value["promo"];
+                    let moneyqly = pri * qty;
+                    money += pri * qty;
+                    let price = parseInt(pri);
+                    let format = moneyqly.toLocaleString('en-US');
+                    let maxqty = value["instock"];
+
+                    let productsSameType = <?php echo $products_same_type_json; ?>;
+
+                    // Khi render sản phẩm 
+                    // console.log(productsSameType[id]); 
+                    // productsSameType[id].map(function (value, index) {
+                    //     console.log('Product ID:', value['ID']);
+                    //     console.log('Quantity:', value['quantity']);
+                    //     console.log('Quantity:', value['stock']);
+                    //     console.log('Promotions:', value['list_promotion'][0]['promotion']);
+                    //     console.log('Product Link:', value['permalink']);
+                    // })
+                    let optionsHtml = '';
+                    let productsSameTypeList = productsSameType[id] || [];
+
+                    if (productsSameTypeList.length > 0) {
+                        productsSameTypeList.map(function(product, index) {
+                            // Check if product is already in cart
+                            const isInCart = cart.some(item => item.id == product['ID']);
+                            // Check if product has sufficient stock
+                            const hasStock = product['instock'] !== "" && parseInt(product['instock']) >= qty;
+                            
+                            // Add disabled attribute and a class for styling if needed
+                            const disabledAttr = (isInCart || !hasStock) ? 'disabled' : '';
+                            const disabledClass = (isInCart || !hasStock) ? 'text-gray-400' : '';
+                            
+                            // Add a title/tooltip to show why option is disabled
+                            let titleAttr = '';
+                            if (isInCart) {
+                                titleAttr = 'Already in cart';
+                            } else if (!hasStock) {
+                                titleAttr = 'Insufficient stock';
+                            }
+                            
+                            optionsHtml += `<option 
+                                value="${product['ID']}" 
+                                ${disabledAttr}
+                                class="${disabledClass}"
+                                title="${titleAttr}"
+                            >${product['list_promotion'][0]['promotion']}</option>`;
+                        });
+                    }
+
+                    // Phần còn lại của logic tạo HTML
+                    htmldetal +=
+                        ' <div\n' +
+                        '     class="w-full item-cart flex flex-wrap lg:flex-nowrap gap-4 lg:gap-6 items-center p-6 rounded-xl bg-white">\n' +
+                        '     <label class="custom-checkbox">\n' +
+                        '         <div class="checkbox-container">';
+                    if (select == false || select == undefined) {
+                        htmldetal +=
+                            '             <input type="checkbox" name="product_chose" class="cart-checkbox form-check-input" data-product-id="' + id + '" value="' + id + '">';
+                    } else {
+                        htmldetal +=
+                            '             <input type="checkbox" name="product_chose" class="cart-checkbox form-check-input" checked data-product-id="' + id + '" value="' + id + '">';
+                    }
+
+                    htmldetal +=
+                        '             <span class="checkmark"></span>\n' +
+                        '         </div>\n' +
+                        '     </label>\n' +
+                        '     <div class="flex md:w-2/3 max-w-[454px] items-center gap-5">\n' +
+                        '         <figure\n' +
+                        '             class="w-[60px] h-[60px] md:w-[100px] md:h-[100px] overflow-hidden rounded-xl border border-solid border-neutral-200">\n' +
+                        '             <a href="' + link + '">\n' +
+                        '                 <img src="' + link_img + '" alt="item">\n' +
+                        '             </a>\n' +
+                        '         </figure>\n' +
+                        '         <div class="flex-1 flex flex-col gap-2">\n' +
+                        '             <h2 class="text-body-md-medium text-gray-8 truncate-2row"><a href="' + link + '">' + title + '\n' +
+                        '             </a></h2>\n';
+                    if(productsSameTypeList.length > 0){
+                        htmldetal +=
+                        '             <select class="input-neutral-200 max-w-[250px] text-body-sm-regular text-gray-7 select-pack" data-id="' + id + '">\n' +
+                        '                 <option value="'+ id +'">' + promo + '</option>\n' +
+                                            optionsHtml + 
+                        '             </select>\n';
+                        }
+                    htmldetal +=
+                        '         </div>\n' +
+                        '     </div>\n' +
+                        '     <div class="md:min-w-[143px] flex flex-col items-end justify-end gap-1">\n' +
+                        '         <p class="text-body-md-medium text-primary">$' + pri + ' </p>\n' +
+                        '     </div>\n' +
+                        '     <div\n' +
+                        '         class="counter flex items-center justify-center w-[110px] h-10 border border-solid border-[#eee] rounded-lg text-body-sm-medium text-[#121138]">\n' +
+                        '         <button class="decrement px-3 py-1 btn-minus" data-id="' + id + '" data-instock="'+ maxqty +'" data-value="' + qty + '" data-indent="' + indent + '">−</button>\n' +
+                        '         <input type="text" data-id="' + id + '"  name="quant[' + indent + ']" value="' + qty + '" readonly\n' +
+                        '             class="quantity w-8 text-center focus:outline-none" />\n' +
+                        '         <button class="increment px-3 py-1 btn-plus" data-instock="'+ maxqty +'" data-id="' + id + '" data-value="' + qty + '" data-indent="' + indent + '">+</button>\n' +
+                        '     </div>\n' +
+                        '     <button data-id="' + id + '" class="button bg-trans btn-remove-cart">\n' +
+                        '         <figure class="w-6 h-6"><img src="https://suremeal.qixtech.com/wp-content/themes/abcd/assets/image/icon/trash.svg" alt="icon">\n' +
+                        '         </figure>\n' +
+                        '     </button>\n' +
+                        ' </div>';
+                    // Lấy dữ liệu từ PHP qua AJAX
+                    // $.ajax({
+                    //     url: "https://suremeal.qixtech.com/wp-admin/admin-ajax.php",
+                    //     type: 'POST',
+                    //     data: {
+                    //         action: "QueryPack",
+                    //         id: id
+                    //     },
+                    //     dataType: 'json',
+                    //     success: function (response) {
+                    //         if (response.success) {
+                    //             // Gắn dữ liệu trả về vào biến htmlpack
+                    //             var htmlpack = response.data;
+                    //
+                    //             // Thay thế <select> với class 'select-pack' tương ứng
+                    //             $(".select-pack[data-id='" + id + "']").html(htmlpack);
+                    //         } else {
+                    //             console.error("Failed to fetch pack options for product ID: " + id);
+                    //         }
+                    //     },
+                    //
+                    // });
+                });
+
+
+                $(".menu__cart .number").html(qtytotal);
+
+                $(".show-cart").html(html);
+                $(".cart-detail").html(htmldetal);
+                $(".list-total").html(htmltatol);
+                $(".user-info").removeClass("d-none");
+                $(".table-label").removeClass("d-none");
+                // countTotal()
+            } else {
+                $(".cart-notfound").removeClass("d-none");
+                $(".user-info").addClass("d-none");
+                $(".table-label").addClass("d-none");
+                $(".cart-right").addClass("d-none");
+            }
+        }
+        // Add this after your showCart() function
+        $(document).on('change', '.select-pack', function() {
+            const selectedProductId = $(this).val();
+            const currentProductId = $(this).data('id');
+            const currentQty = parseInt($(this).closest('.item-cart').find('.quantity').val());
+            
+            // Get products same type data
+            const productsSameType = <?php echo $products_same_type_json; ?>;
+            
+            let cart = JSON.parse(localStorage.getItem('cart')) || [];
+            
+            // Check if product already exists
+            const productExistsInCart = cart.some(item => item.id == selectedProductId);
+            if (productExistsInCart) {
+                alert('This product is already in your cart');
+                $(this).val(currentProductId);
+                return;
+            }
+            
+            // Find selected product data
+            const selectedProduct = productsSameType[currentProductId].find(p => p.ID == selectedProductId);
+            
+            // Check stock
+            if (selectedProduct.instock == "" || parseInt(selectedProduct.instock) < currentQty) {
+                alert('Not enough stock available');
+                $(this).val(currentProductId);
+                return;
+            }
+            
+            // Update cart item
+            const cartItemIndex = cart.findIndex(item => item.id == currentProductId);
+            if (cartItemIndex !== -1) {
+                cart[cartItemIndex] = {
+                    ...cart[cartItemIndex],
+                    id: String(selectedProduct.ID),
+                    title: selectedProduct.post_title,
+                    price: parseInt(selectedProduct.price),
+                    promo: selectedProduct.list_promotion[0].promotion,
+                    link: selectedProduct.permalink,
+                    instock: parseInt(selectedProduct.instock),
+                    qty: cart[cartItemIndex].qty,
+                    select: cart[cartItemIndex].select
+                };
+                
+                // Update storage and refresh display
+                localStorage.setItem('cart', JSON.stringify(cart));
+                showCart();
+                calculateCartInfo();
+                calculateTotal();
+            }
+        });
+    </script>
     <script>
         
         $('.btn-cart-purchase').click(function() {

@@ -2,53 +2,187 @@
 <?php
 get_header();
 
+$authenticated_user = validate_user_token();
+$id_user = $authenticated_user->ID;
+$reason_for_knowing_user = $authenticated_user->reason_for_knowing;
+$authenticated_dealer = validate_dealer_token();
+$id_dealer = $authenticated_dealer->ID;
+$reason_for_knowing_dealer = $authenticated_dealer->reason_for_knowing;
+
 $countryregion = get_field('countryregion', 'option');
+$list_reason = get_field('list_reason', 'option');
 
 $json = json_encode($countryregion);
-$id = get_the_ID();
+$id = get_the_ID(); 
 global $wpdb;
-$list_voucher = $wpdb->get_results("SELECT * FROM `wp_voucher` WHERE `status` = 2");
-$count_vouchers = $wpdb->get_var("SELECT COUNT(*) FROM `wp_voucher` WHERE `status` = 2");
+
+$list_voucher = $wpdb->get_results(
+    $wpdb->prepare(
+        "SELECT * FROM wp_voucher 
+        WHERE status = 2 
+        AND (
+            id_user IS NULL
+            OR id_user = %d 
+            OR JSON_CONTAINS(id_user, %s)
+        )",
+        $id_user,
+        json_encode((string) $id_user) // Chuyển id_user thành chuỗi JSON nếu cần
+    )
+);
+
+$count_vouchers = $wpdb->get_var(
+    $wpdb->prepare(
+        "SELECT COUNT(*) FROM wp_voucher 
+        WHERE status = 2 
+        AND (
+            id_user = %d 
+            OR JSON_CONTAINS(id_user, %s)
+            OR id_user IS NULL
+        )",
+        $id_user,
+        $id_user
+    )
+);
 
 $total_order = get_field('total_order', 'option');
 
 $url = get_template_directory_uri();
 
-$authenticated_user = validate_user_token();
-$id_user = $authenticated_user->ID;
-$user = $wpdb->get_results("SELECT * FROM `wp_account_users` WHERE `id` = " . $id_user);
+if ($authenticated_user) {
+    $user = $wpdb->get_results("SELECT * FROM `wp_account_users` WHERE `id` = " . $id_user);
 
-$state = $user[0]->state;
-$city = $user[0]->city;
-$country = $user[0]->country;
-$phone_number = $user[0]->phone_number;
-$fullname_shipper = $user[0]->fullname_shipper;
-$email_shipper = $user[0]->email_shipper;
-$zipcode_shipper = $user[0]->zipcode_shipper;
-$address1_shipper = $user[0]->address1_shipper;
-$address2_shipper = $user[0]->address2_shipper;
+    $state = $user[0]->state;
+    $city = $user[0]->city;
+    $country = $user[0]->country;
+    $phone_number = $user[0]->phone_number;
+    $fullname_shipper = $user[0]->fullname_shipper;
+    $email_shipper = $user[0]->email_shipper;
+    $zipcode_shipper = $user[0]->zipcode_shipper;
+    $address1_shipper = $user[0]->address1_shipper;
+    $address2_shipper = $user[0]->address2_shipper;
+}
+if ($authenticated_dealer) {
+    $dealer = $wpdb->get_results("SELECT * FROM `wp_account_dealers` WHERE `id` = " . $id_dealer);
+
+    $state = $dealer[0]->state;
+    $city = $dealer[0]->city;
+    $country = $dealer[0]->country;
+    $phone_number = $dealer[0]->phone_number;
+    $fullname_shipper = $dealer[0]->fullname_shipper;
+    $email_shipper = $dealer[0]->email_shipper;
+    $zipcode_shipper = $dealer[0]->zipcode_shipper;
+    $address1_shipper = $dealer[0]->address1_shipper;
+    $address2_shipper = $dealer[0]->address2_shipper;
+}
+
+
+function get_dealer_discount($id_dealer, $product_id)
+{
+    global $wpdb;
+    $discount = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT * FROM wp_discount_dealer 
+            WHERE id_dealer = %d AND product = %d",
+            $id_dealer,
+            $product_id
+        )
+    );
+    return $discount;
+}
+
+// Function to calculate final price with dealer discount
+function calculate_dealer_price($original_price, $discount)
+{
+    if (!$discount) return false;
+
+    if ($discount->discount_type == 0) {
+        // Fixed amount discount
+        return max(0, $original_price - $discount->discount_amount);
+    } else {
+        // Percentage discount
+        $discount_amount = $original_price * ($discount->discount_amount / 100);
+        return max(0, $original_price - $discount_amount);
+    }
+}
+$products_same_type = [];
+// Lấy tất cả products_of_the_same_type cho các sản phẩm có thể có trong cart
+$all_products = get_posts(array(
+    'post_type' => 'product',
+    'posts_per_page' => -1,
+    'fields' => 'ids'
+));
+
+foreach($all_products as $product_id) {
+    $same_type = get_field('products_of_the_same_type', $product_id);
+    if ($same_type) {
+        // Create array to store products with additional fields
+        $products_with_fields = [];
+        
+        foreach ($same_type as $product) {
+            // Get the additional fields
+            $quantity = get_field('quantity', $product->ID);
+            $price = get_field('price', $product->ID);
+            $sale_price = get_field('sale_price', $product->ID);
+            $instock = get_field('instock', $product->ID);
+            $list_promotion = get_field('list_promotion', $product->ID);
+            $permalink = get_permalink($product->ID);
+
+            // Get dealer discount if dealer is logged in
+            $dealer_discount = $id_dealer ? get_dealer_discount($id_dealer, $product->ID) : null;
+
+            // Calculate final price based on dealer discount
+            $final_price = $price;
+            if ($dealer_discount) {
+                // Calculate dealer discount price from original price
+                $dealer_price = calculate_dealer_price($price, $dealer_discount);
+                // If there's a sale price, compare it with dealer price
+                if ($sale_price) {
+                    $final_price = min($dealer_price, $sale_price);
+                } else {
+                    $final_price = $dealer_price;
+                }
+            } else {
+                // If no dealer discount, use sale price if available
+                $final_price = $sale_price ? $sale_price : $price;
+            }
+            
+            // Add the fields to the product object
+            $product_data = (array) $product;  // Convert to array to add new properties
+            $product_data['quantity'] = $quantity;
+            $product_data['price'] = $final_price;
+            $product_data['instock'] = $instock;
+            $product_data['list_promotion'] = $list_promotion;
+            $product_data['permalink'] = $permalink;
+            
+            $products_with_fields[] = $product_data;
+        }
+        
+        $products_same_type[$product_id] = $products_with_fields;
+    }
+}
+$products_same_type_json = json_encode($products_same_type);
 
 ?>
 
 <main class="bg-[#EEF0F6]">
     <section class="py-6">
         <div class="container">
-            <?php if (ICL_LANGUAGE_CODE == 'en') :?>
-            <a href="<?= home_url() ?>/cart" class="text-body-md-medium text-secondary flex gap-3">
-                <figure><img src="<?= $url ?>/assets/image/icon/arrow-left-20-second.svg" alt="icon"></figure>
-                <?php pll_e('Back to cart') ?>
-            </a>
-            <?php elseif (ICL_LANGUAGE_CODE == 'vn'):?>
+            <?php if (ICL_LANGUAGE_CODE == 'en') : ?>
+                <a href="<?= home_url() ?>/cart" class="text-body-md-medium text-secondary flex gap-3">
+                    <figure><img src="<?= $url ?>/assets/image/icon/arrow-left-20-second.svg" alt="icon"></figure>
+                    <?php pll_e('Back to cart') ?>
+                </a>
+            <?php elseif (ICL_LANGUAGE_CODE == 'vn'): ?>
                 <a href="<? home_url() ?>/vn/cart" class="text-body-md-medium text-secondary flex gap-3">
                     <figure><img src="<?= $url ?>/assets/image/icon/arrow-left-20-second.svg" alt="icon"></figure>
                     <?php pll_e('Back to cart') ?>
                 </a>
-            <?php elseif (ICL_LANGUAGE_CODE == 'es'):?>
+            <?php elseif (ICL_LANGUAGE_CODE == 'es'): ?>
                 <a href="<? home_url() ?>/es/cart" class="text-body-md-medium text-secondary flex gap-3">
                     <figure><img src="<?= $url ?>/assets/image/icon/arrow-left-20-second.svg" alt="icon"></figure>
                     <?php pll_e('Back to cart') ?>
                 </a>
-            <?php endif;?>
+            <?php endif; ?>
         </div>
     </section>
     <style>
@@ -72,6 +206,12 @@ $address2_shipper = $user[0]->address2_shipper;
             transform: rotate(180deg);
             transition: all 0.5s ease-in-out;
         }
+        
+        select option:disabled {
+            color: #9CA3AF;
+            background-color: #F3F4F6;
+            cursor: not-allowed;
+        }
     </style>
     <section class="pb-20">
         <div class="container">
@@ -85,31 +225,54 @@ $address2_shipper = $user[0]->address2_shipper;
                     <div class="flex flex-col gap-4">
                         <h2 class="text-body-xl-medium text-gray-9"><?php pll_e('Delivery information') ?></h2>
                         <div class="flex flex-col gap-4 lg:gap-6 p-6 rounded-xl bg-white">
-                            <?php if (isset($_COOKIE['user_token']) || $authenticated_user) {?>
-                                <?php if (!empty($fullname_shipper)) :?>
-                            <div class="flex flex-col gap-2">
+                            <?php if (isset($_COOKIE['user_token']) || $authenticated_user) { ?>
+                                <?php if (!empty($fullname_shipper)) : ?>
+                                    <div class="flex flex-col gap-2">
 
-                                <label class="flex items-center gap-2">
-                                    <input type="radio" name="payment" class="radio-blue" value="1"
-                                           data-fullname="<?= $fullname_shipper ?>"
-                                           data-city="<?= $city ?>"
-                                           data-state="<?= $state ?>"
-                                           data-country="<?= $country ?>"
-                                           data-phone_number="<?= $phone_number ?>"
-                                           data-email="<?= $email_shipper ?>"
-                                           data-zipcode_shipper="<?= $zipcode_shipper ?>"
-                                           data-address1_shipper="<?= $address1_shipper ?>"
-                                           data-address2_shipper="<?= $address2_shipper ?>"
-                                    >
-                                    <div class="flex flex-col">
-                                        <h2 class="text-body-md-semibold text-gray-8"><?= $fullname_shipper ?></h2>
-                                        <p class="text-body-md-regular text-gray-3"><?= $address1_shipper ?>, <?= $city ?>, <?= $state ?>, <?= $country ?> </p>
+                                        <label class="flex items-center gap-2">
+                                            <input type="radio" name="payment" class="radio-blue" value="1"
+                                                data-fullname="<?= $fullname_shipper ?>"
+                                                data-city="<?= $city ?>"
+                                                data-state="<?= $state ?>"
+                                                data-country="<?= $country ?>"
+                                                data-phone_number="<?= $phone_number ?>"
+                                                data-email="<?= $email_shipper ?>"
+                                                data-zipcode_shipper="<?= $zipcode_shipper ?>"
+                                                data-address1_shipper="<?= $address1_shipper ?>"
+                                                data-address2_shipper="<?= $address2_shipper ?>">
+                                            <div class="flex flex-col">
+                                                <h2 class="text-body-md-semibold text-gray-8"><?= $fullname_shipper ?></h2>
+                                                <p class="text-body-md-regular text-gray-3"><?= $address1_shipper ?>, <?= $city ?>, <?= $state ?>, <?= $country ?> </p>
+                                            </div>
+
+                                        </label>
                                     </div>
+                                <?php endif; ?>
+                            <?php } ?>
+                            <?php if (isset($_COOKIE['dealer_token']) || $authenticated_dealer) { ?>
+                                <?php if (!empty($fullname_shipper)) : ?>
+                                    <div class="flex flex-col gap-2">
 
-                                </label>
-                            </div>
-                                <?php endif;?>
-    <?php }?>
+                                        <label class="flex items-center gap-2">
+                                            <input type="radio" name="payment" class="radio-blue" value="1"
+                                                data-fullname="<?= $fullname_shipper ?>"
+                                                data-city="<?= $city ?>"
+                                                data-state="<?= $state ?>"
+                                                data-country="<?= $country ?>"
+                                                data-phone_number="<?= $phone_number ?>"
+                                                data-email="<?= $email_shipper ?>"
+                                                data-zipcode_shipper="<?= $zipcode_shipper ?>"
+                                                data-address1_shipper="<?= $address1_shipper ?>"
+                                                data-address2_shipper="<?= $address2_shipper ?>">
+                                            <div class="flex flex-col">
+                                                <h2 class="text-body-md-semibold text-gray-8"><?= $fullname_shipper ?></h2>
+                                                <p class="text-body-md-regular text-gray-3"><?= $address1_shipper ?>, <?= $city ?>, <?= $state ?>, <?= $country ?> </p>
+                                            </div>
+
+                                        </label>
+                                    </div>
+                                <?php endif; ?>
+                            <?php } ?>
                             <div class="flex flex-col gap-2">
 
                                 <label class="flex items-center gap-2">
@@ -128,7 +291,7 @@ $address2_shipper = $user[0]->address2_shipper;
                                 <div class="w-full flex flex-col lg:flex-row items-center gap-5">
                                     <label class="input-label w-50-g-10">
                                         <p class="input-title"><?php pll_e('Name') ?> <span class="text-primary">*</span></p>
-                                        <input type="text" class="input-field" name="fullName"  placeholder="<?php pll_e('Your name') ?>">
+                                        <input type="text" class="input-field" name="fullName" placeholder="<?php pll_e('Your name') ?>">
                                     </label>
                                     <label class="input-label w-50-g-10">
                                         <p class="input-title"><?php pll_e('Email') ?> <span class="text-primary">*</span></p>
@@ -144,9 +307,9 @@ $address2_shipper = $user[0]->address2_shipper;
                                     <p class="input-title"><?php pll_e('Country/Region') ?> <span class="text-primary">*</span>
                                     </p>
                                     <select class="input-field" id="country" name="country">
-                                        <?php foreach ($countryregion as $key => $val) :?>
-                                        <option value="<?= $val['region'] ?>"><?= $val['region'] ?></option>
-                                        <?php endforeach;?>
+                                        <?php foreach ($countryregion as $key => $val) : ?>
+                                            <option value="<?= $val['region'] ?>"><?= $val['region'] ?></option>
+                                        <?php endforeach; ?>
 
                                     </select>
                                 </label>
@@ -166,7 +329,7 @@ $address2_shipper = $user[0]->address2_shipper;
                                 <div class="w-full flex flex-col lg:flex-row items-center gap-5">
                                     <label class="input-label">
                                         <p class="input-title"><?php pll_e('City') ?> <span class="text-primary">*</span></p>
-                                        <input type="text" class="input-field" name="city"  placeholder="<?php pll_e('Enter your city') ?>
+                                        <input type="text" class="input-field" name="city" placeholder="<?php pll_e('Enter your city') ?>
                                         ">
                                     </label>
                                     <label class="input-label Vietnam" style="display: none">
@@ -179,7 +342,7 @@ $address2_shipper = $user[0]->address2_shipper;
 
                                     </label>
                                     <label class="input-label Vietnam" style="display: none">
-                                        <p class="input-title"><?php pll_e('Postal code') ?> <span class="text-primary">*</span></p>
+                                        <p class="input-title"><?php pll_e('Postal code') ?> <span id="required-code" class="text-primary">*</span></p>
                                         <input type="text" class="input-field" name="postaCode" placeholder="<?php pll_e('Enter your Postal code') ?>
                                         ">
                                     </label>
@@ -248,16 +411,111 @@ $address2_shipper = $user[0]->address2_shipper;
                                         ">
                                     </label>
                                 </div>
-<?php if (isset($_COOKIE['user_token']) || $authenticated_user) {?>
-                                <label class="custom-checkbox">
-                                    <div class="checkbox-container">
-                                        <input type="checkbox" name="saveInformation" value="1">
-                                        <span class="checkmark"></span>
+                                <!-- test -->
+                                <div class="w-full grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <div class="flex flex-col gap-3">
+                                        <p class="text-body-md-semibold text-gray-9">Residential / Business</p>
+                                        <div class="flex flex-col gap-4">
+                                            <label class="flex items-center gap-5 cursor-pointer">
+                                                <input type="radio" name="address_type" class="radio-blue" value="Residential" checked>
+                                                <div class="w-full lg:w-auto flex gap-2">
+                                                    <p class="text-body-md-regular text-gray-8">Residential</p>
+                                                </div>
+                                            </label>
+                                            <label class="flex items-center gap-5 cursor-pointer">
+                                                <input type="radio" name="address_type" class="radio-blue" value="Business">
+                                                <div class="w-full lg:w-auto flex gap-2">
+                                                    <p class="text-body-md-regular text-gray-8">Business</p>
+                                                </div>
+                                            </label>
+                                        </div>
                                     </div>
-                                    <p class="text-body-md-regular text-gray-9"><?php pll_e('Save this information for next time') ?>
-                                    </p>
-                                </label>
-    <?php }?>
+                                    <?php if ((isset($_COOKIE['user_token']) && $authenticated_user && $reason_for_knowing_user == '') || (isset($_COOKIE['dealer_token']) && $authenticated_dealer && $reason_for_knowing_dealer == '')): ?>
+                                        <div class="flex flex-col gap-3">
+                                            <p class="text-body-md-semibold text-gray-9">How do you know about SureMeal</p>
+                                            <div class="flex flex-col gap-4">
+                                                <?php foreach($list_reason as $item): ?>
+                                                    <label class="flex items-center gap-5 cursor-pointer">
+                                                        <div class="checkbox-container">
+                                                            <input type="checkbox" name="reason_for_knowing_checkbox[]" value="<?= $item['reason'] ?>">
+                                                            <span class="checkmark"></span>
+                                                        </div>
+                                                        <div class="w-full lg:w-auto flex gap-2">
+                                                            <p class="text-body-md-regular text-gray-8"><?= $item['reason'] ?></p>
+                                                        </div>
+                                                    </label>
+                                                <?php endforeach; ?>
+
+                                                <label class="flex items-center gap-5 cursor-pointer">
+                                                    <div class="checkbox-container">
+                                                        <input id="moreType" type="checkbox" name="reason_for_knowing" value="">
+                                                        <span class="checkmark"></span>
+                                                    </div>
+                                                    <div class="w-full lg:w-auto flex gap-2">
+                                                        <p class="text-body-md-regular text-gray-8">Other</p>
+                                                    </div>
+                                                </label>
+                                            </div>
+                                            <label class="input-label col-span-2 moreTypeText hidden">
+                                                <textarea name="reason_for_knowing_text" class="input-field" cols="3"></textarea>
+                                            </label>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
+                                <!-- end test -->
+                                <script>
+                                    document.addEventListener("DOMContentLoaded", function () {
+                                        const checkboxOther = document.getElementById("moreType");
+                                        const moreTypeText = document.querySelector(".moreTypeText");
+                                        const allCheckboxes = document.querySelectorAll(".checkbox-container input[type='checkbox']");
+
+                                        checkboxOther.addEventListener("change", function () {
+                                            if (this.checked) {
+                                                // Bỏ chọn tất cả các checkbox khác
+                                                allCheckboxes.forEach((checkbox) => {
+                                                    if (checkbox !== checkboxOther) {
+                                                        checkbox.checked = false;
+                                                    }
+                                                });
+                                                moreTypeText.classList.remove("hidden");
+                                            } else {
+                                                moreTypeText.classList.add("hidden");
+                                            }
+                                        });
+
+                                        allCheckboxes.forEach((checkbox) => {
+                                            if (checkbox !== checkboxOther) {
+                                                checkbox.addEventListener("change", function () {
+                                                    if (this.checked) {
+                                                        // Bỏ chọn checkbox "Other" khi checkbox khác được chọn
+                                                        checkboxOther.checked = false;
+                                                        moreTypeText.classList.add("hidden");
+                                                    }
+                                                });
+                                            }
+                                        });
+                                    });
+                                </script>
+                                <?php if (isset($_COOKIE['user_token']) || $authenticated_user) { ?>
+                                    <label class="custom-checkbox w-full">
+                                        <div class="checkbox-container">
+                                            <input type="checkbox" name="saveInformation" value="1">
+                                            <span class="checkmark"></span>
+                                        </div>
+                                        <p class="text-body-md-regular text-gray-9"><?php pll_e('Save this information for next time') ?>
+                                        </p>
+                                    </label>
+                                <?php } ?>
+                                <?php if (isset($_COOKIE['dealer_token']) || $authenticated_dealer) { ?>
+                                    <label class="custom-checkbox">
+                                        <div class="checkbox-container">
+                                            <input type="checkbox" name="saveInformation" value="1">
+                                            <span class="checkmark"></span>
+                                        </div>
+                                        <p class="text-body-md-regular text-gray-9"><?php pll_e('Save this information for next time') ?>
+                                        </p>
+                                    </label>
+                                <?php } ?>
                             </form>
                         </div>
                     </div>
@@ -265,26 +523,6 @@ $address2_shipper = $user[0]->address2_shipper;
                     <div class="flex flex-col gap-4">
                         <h2 class="text-body-xl-medium text-gray-9"><?php pll_e('Select payment method') ?></h2>
                         <div class="flex flex-col rounded-xl bg-white">
-<!--                            <label class="flex items-center gap-5 px-5 py-4 border-b border-neutral-300 border-solid">-->
-<!--                                <input type="radio" name="paymentCart" class="radio-blue">-->
-<!--                                <div class="flex flex-wrap items-center gap-2">-->
-<!--                                    <figure><img src="<?= $url ?>/assets/image/badge-visa.svg" alt=""></figure>-->
-<!--                                    <div class="w-full lg:w-auto flex gap-2">-->
-<!--                                        <p class="text-body-md-semibold text-gray-9">Visa</p>-->
-<!--                                        <p class="text-body-md-regular text-neutral-500">Ending in 4567</p>-->
-<!--                                    </div>-->
-<!--                                </div>-->
-<!--                            </label>-->
-<!--                            <label class="flex items-center gap-5 px-5 py-4 border-b border-neutral-300 border-solid">-->
-<!--                                <input type="radio" name="paymentCart" class="radio-blue">-->
-<!--                                <div class="flex flex-wrap items-center gap-2">-->
-<!--                                    <figure><img src="<?= $url ?>/assets/image/badge-master.svg" alt=""></figure>-->
-<!--                                    <div class="w-full lg:w-auto flex gap-2">-->
-<!--                                        <p class="text-body-md-semibold text-gray-9">Mastercard</p>-->
-<!--                                        <p class="text-body-md-regular text-neutral-500">Ending in 1234</p>-->
-<!--                                    </div>-->
-<!--                                </div>-->
-<!--                            </label>-->
                             <label class="flex items-center gap-5 px-5 py-4">
                                 <input type="radio" name="paymentCart" class="radio-blue" checked>
                                 <div class="w-full flex flex-wrap items-center gap-2 justify-between">
@@ -327,11 +565,12 @@ $address2_shipper = $user[0]->address2_shipper;
                 </div>
 
                 <div class="flex flex-col gap-4 w-full lg:w-[33%] lg:max-w-[437px] pt-12">
+                    <?php if(!$authenticated_dealer): ?>
                     <div
-                            class="select-offer cursor-pointer flex items-center gap-6 justify-between px-6 py-4 rounded-t-xl bg-white">
+                        class="select-offer cursor-pointer flex items-center gap-6 justify-between px-6 py-4 rounded-t-xl bg-white">
                         <div class="flex items-center gap-3">
                             <figure class="w-6 h-6"><img src="<?= $url ?>/assets/image/icon/ticket-sale-primary.svg"
-                                                         alt="icon">
+                                    alt="icon">
                             </figure>
                             <p class="text-body-md-medium text-gray-9"><?php pll_e('Select or enter an offer') ?></p>
                         </div>
@@ -342,7 +581,7 @@ $address2_shipper = $user[0]->address2_shipper;
                     </div>
 
                     <div
-                            class="view-offer absolute left-0 right-0 flex flex-col items-center gap-6 px-6 py-4 rounded-xl bg-white overflow-hidden max-h-0 opacity-0 invisible transition-[max-height,opacity] duration-500 ease-in-out">
+                        class="view-offer absolute left-0 right-0 flex flex-col items-center gap-6 px-6 py-4 rounded-xl bg-white overflow-hidden max-h-0 opacity-0 invisible transition-[max-height,opacity] duration-500 ease-in-out">
                         <label class="input-label">
                             <p class="input-title"><?php pll_e('Discount code') ?></p>
                             <input type="text" class="input-field" id="codeVoucher" name="voucher_code" placeholder="<?php pll_e('Enter your discount code here') ?>">
@@ -350,13 +589,13 @@ $address2_shipper = $user[0]->address2_shipper;
                         <button class="button bg-primary text-body-md-semibold w-full code_apply" disabled><?php pll_e('Apply code') ?></button>
 
                         <div class="flex flex-col gap-3">
-                            <p><?php pll_e('Promotion') ?> (<?= $count_vouchers ?>)</p>
+<!--                            <p>--><?php //pll_e('Promotion') ?><!-- (--><?//= $count_vouchers ?><!--)</p>-->
                             <div class="flex flex-col gap-3 max-h-[400px] overflow-auto custom-scrollbar">
                                 <!-- single promo -->
-                                <?php foreach ($list_voucher as $key => $value) :?>
+                                <?php foreach ($list_voucher as $key => $value) : ?>
                                     <div class="py-3 flex items-center gap-5 rounded-xl bg-white">
                                         <figure class="w-14 h-14"><img src="<?= $url ?>/assets/image/icon/couple.svg"
-                                                                       alt="couple">
+                                                alt="couple">
                                         </figure>
                                         <div class="flex-1 flex flex-col gap-2">
                                             <h2 class="text-body-md-medium text-gray-9 truncate-2row"><?= $value->voucher_name ?></h2>
@@ -365,16 +604,16 @@ $address2_shipper = $user[0]->address2_shipper;
                                         </div>
                                         <button class="w-8 h-8 flex items-center justify-center rounded-full bg-[#FEE] app-voucher" data-voucher="<?= $value->voucher_code ?>">
                                             <figure class="w-6 h-6"><img
-                                                        src="<?= $url ?>/assets/image/icon/plus-24-primary.svg" alt="icon">
+                                                    src="<?= $url ?>/assets/image/icon/plus-24-primary.svg" alt="icon">
                                             </figure>
                                         </button>
                                     </div>
-                                <?php endforeach;?>
+                                <?php endforeach; ?>
 
                             </div>
                         </div>
                     </div>
-
+                    <?php endif ?>
                     <div class="flex flex-col gap-5 px-6 py-4 rounded-xl bg-white">
                         <p><?php pll_e('Order information') ?></p>
                         <div class="flex flex-col gap-3">
@@ -390,16 +629,16 @@ $address2_shipper = $user[0]->address2_shipper;
                             <div class="flex items-center justify-between">
                                 <p class="text-body-sm-regular text-gray-7"><?php pll_e('Shipping fee') ?></p>
                                 <!-- <p class="text-body-sm-regular text-secondary">Free of charge</p> -->
-                                <h2 class="text-body-md-medium text-gray-9 shipping-fee" >--</h2>
+                                <h2 class="text-body-md-medium text-gray-9 shipping-fee">--</h2>
                             </div>
-<!--                            <div class="flex items-center justify-between">-->
-<!--                                <p class="text-body-sm-regular text-gray-7">Taxes</p>-->
-<!--                                <h2 class="text-body-md-medium text-gray-9">$0.00 </h2>-->
-<!--                            </div>-->
+                            <!--                            <div class="flex items-center justify-between">-->
+                            <!--                                <p class="text-body-sm-regular text-gray-7">Taxes</p>-->
+                            <!--                                <h2 class="text-body-md-medium text-gray-9">$0.00 </h2>-->
+                            <!--                            </div>-->
                             <hr class="divider">
                             <div class="flex items-center justify-between">
                                 <p class="text-body-sm-regular text-gray-7"><?php pll_e('Total payment') ?></p>
-                                <h2 class="text-body-xl-medium text-primary total-true" >$0.00</h2>
+                                <h2 class="text-body-xl-medium text-primary total-true">$0.00</h2>
                             </div>
                         </div>
                         <p class="text-body-sm-regular">
@@ -408,7 +647,7 @@ $address2_shipper = $user[0]->address2_shipper;
                                 class="text-secondary"><?php pll_e('Personal Data Processing Policy.') ?></a>
                         </p>
                         <button onclick="ConfirmOrder()" class="mt-3 w-full button bg-primary text-body-md-semibold text-white" id="submit-check-out"><?php pll_e('Check out') ?></button>
-                         <button onclick="ConfirmOrderInfomation()" class="mt-3 w-full button bg-primary text-body-md-semibold text-white" id="submit-check-out-info" style="display: none"><?php pll_e('Check out') ?></button>
+                        <button onclick="ConfirmOrderInfomation()" class="mt-3 w-full button bg-primary text-body-md-semibold text-white" id="submit-check-out-info" style="display: none"><?php pll_e('Check out') ?></button>
                     </div>
                 </div>
             </div>
@@ -418,10 +657,196 @@ $address2_shipper = $user[0]->address2_shipper;
 <?php get_footer() ?>
 <!-- script offer js -->
 
+<script>
+function showCartSelect() {
+    let dataSave = [];
+
+    if (localStorage.getItem('cart')) { // Lấy thông tin giỏ hàng từ localStorage
+        let cartLocal = localStorage.getItem('cart') ? localStorage.getItem('cart') : "";
+        var cart = JSON.parse(localStorage.getItem("cart")) || [];
+
+        // Lọc chỉ các sản phẩm có select là true
+        dataSave = cart.filter(function (item) {
+            return item.select === true; // Chỉ lấy sản phẩm có select: true
+        });
+
+        var totalItems = dataSave.length; // Số sản phẩm có chọn
+        $(".cart-notfound").addClass("d-none");
+
+        // Gom nhóm id pro theo thứ tự tăng dần
+        dataSave.sort(function (a, b) {
+            return parseInt(a["id"]) - parseInt(b["id"]);
+        });
+
+        var html = "";
+        var htmltatol = "";
+        var htmldetal = "<h2 class=\"text-body-xl-medium text-gray-9\">Product list (" + totalItems + ")</h2>";
+
+        let money = 0;
+        let qtytotal = 0;
+        var indent = 1;
+
+        // Duyệt qua từng sản phẩm đã được chọn
+        dataSave.map(function (value, index) {
+            let link = value["link"];
+            let link_img = value["img"];
+            let pri = value["price"];
+            let qty = value["qty"];
+            let title = value["title"];
+            qtytotal += qty;
+            let id = value["id"];
+            let select = value["select"];
+            let pack = value["pack"];
+            let promo = value["promo"];
+            let moneyqly = pri * qty;
+            money += pri * qty;
+            let price = parseFloat(pri);
+            let format = moneyqly.toLocaleString('en-US');
+            let maxqty = value["maxqty"];
+
+            let productsSameType = <?php echo $products_same_type_json; ?>;
+            let optionsHtml = '';
+            let productsSameTypeList = productsSameType[id] || [];
+
+            if (productsSameTypeList.length > 0) {
+                productsSameTypeList.map(function(product, index) {
+                    // Check if product is already in cart
+                    const isInCart = cart.some(item => item.id == product['ID']);
+                    // Check if product has sufficient stock
+                    const hasStock = product['instock'] !== "" && parseInt(product['instock']) >= qty;
+                    
+                    // Add disabled attribute and a class for styling if needed
+                    const disabledAttr = (isInCart || !hasStock) ? 'disabled' : '';
+                    const disabledClass = (isInCart || !hasStock) ? 'text-gray-400' : '';
+                    
+                    // Add a title/tooltip to show why option is disabled
+                    let titleAttr = '';
+                    if (isInCart) {
+                        titleAttr = 'Already in checkout';
+                    } else if (!hasStock) {
+                        titleAttr = 'Insufficient stock';
+                    }
+                    
+                    optionsHtml += `<option 
+                        value="${product['ID']}" 
+                        ${disabledAttr}
+                        class="${disabledClass}"
+                        title="${titleAttr}"
+                    >${product['list_promotion'][0]['promotion']}</option>`;
+                });
+            }
+
+            // Xây dựng HTML cho giỏ hàng
+            htmldetal += '<div class="flex flex-col gap-4 lg:gap-6 p-6 rounded-xl bg-white">\n' +
+                '                            <div class="w-full flex flex-wrap gap-4 lg:gap-6 lg:flex-nowrap justify-between items-center">\n' +
+                '                                <div class="flex md:w-2/3 max-w-[454px] items-center gap-5">\n' +
+                '                                    <figure\n' +
+                '                                        class="w-[60px] h-[60px] md:w-[100px] md:h-[100px] overflow-hidden rounded-xl border border-solid border-neutral-200">\n' +
+                '                                        <img src="' + link_img + '" alt="item">\n' +
+                '                                    </figure>\n' +
+                '                                    <div class="flex-1 flex flex-col gap-2">\n' +
+                '                                        <h2 class="text-body-md-medium text-gray-8 truncate-2row">' + title + '\n' +
+                '                                          </h2>\n';
+                if(productsSameTypeList.length > 0){
+                        htmldetal +=
+                        '             <select class="input-neutral-200 max-w-[250px] text-body-sm-regular text-gray-7 select-pack" data-id="' + id + '">\n' +
+                        '                 <option value="'+ id +'">' + promo + '</option>\n' +
+                                            optionsHtml + 
+                        '             </select>\n';
+                        }
+                htmldetal +=
+                '                                    </div>\n' +
+                '                                </div>\n' +
+                '                                <div\n' +
+                '                                    class="counter flex items-center justify-center w-[110px] h-10 text-body-sm-medium text-[#121138]">\n' +
+                '                                <p class="text-body-md-medium text-gray-7">Quantity : ' + qty + '</p>\n' +
+                '                                </div>\n' +
+                '                                <p class="text-body-md-medium text-primary">$' + price + '</p>\n' +
+                '                            </div>\n' +
+                '                        </div>';
+        });
+
+        // Cập nhật số lượng sản phẩm và giỏ hàng
+        $(".menu__cart .number").html(qtytotal);
+        $(".show-cart").html(html);
+        $(".card-select").html(htmldetal);
+        $(".list-total").html(htmltatol);
+        $(".user-info").removeClass("d-none");
+        $(".table-label").removeClass("d-none");
+    } else {
+        $(".cart-notfound").removeClass("d-none");
+        $(".user-info").addClass("d-none");
+        $(".table-label").addClass("d-none");
+        $(".cart-right").addClass("d-none");
+    }
+}
+// Add this after your showCart() function
+$(document).on('change', '.select-pack', function() {
+    const selectedProductId = $(this).val();
+    const currentProductId = $(this).data('id');
+    const currentQty = parseInt($(this).closest('.item-cart').find('.quantity').val());
+    
+    // Get products same type data
+    const productsSameType = <?php echo $products_same_type_json; ?>;
+    
+    let cart = JSON.parse(localStorage.getItem('cart')) || [];
+    
+    // Check if product already exists
+    const productExistsInCart = cart.some(item => item.id == selectedProductId);
+    if (productExistsInCart) {
+        alert('This product is already in your check out');
+        $(this).val(currentProductId);
+        return;
+    }
+    
+    // Find selected product data
+    const selectedProduct = productsSameType[currentProductId].find(p => p.ID == selectedProductId);
+    
+    // Check stock
+    if (selectedProduct.instock == "" || parseInt(selectedProduct.instock) < currentQty) {
+        alert('Not enough stock available');
+        $(this).val(currentProductId);
+        return;
+    }
+    
+    // Update cart item
+    const cartItemIndex = cart.findIndex(item => item.id == currentProductId);
+    if (cartItemIndex !== -1) {
+        cart[cartItemIndex] = {
+            ...cart[cartItemIndex],
+            id: String(selectedProduct.ID),
+            title: selectedProduct.post_title,
+            price: parseInt(selectedProduct.price),
+            promo: selectedProduct.list_promotion[0].promotion,
+            link: selectedProduct.permalink,
+            instock: parseInt(selectedProduct.instock),
+            qty: cart[cartItemIndex].qty,
+            select: cart[cartItemIndex].select
+        };
+        
+        // Update storage and refresh display
+        localStorage.setItem('cart', JSON.stringify(cart));
+        window.location.reload();
+        showCartSelect();
+        calculateCartInfo();
+        calculateTotalTrue();
+
+    }
+});
+</script>
 
 <script>
+    document.getElementById('country').addEventListener('change', function() {
+        const selectedValue = this.value; // Lấy giá trị của option đang được chọn
+        const requiredCodeSpan = document.getElementById('required-code'); // Lấy phần tử span
 
-
+        // Kiểm tra nếu giá trị là "Vietnam" thì ẩn, ngược lại hiển thị
+        if (selectedValue === 'Vietnam') {
+            requiredCodeSpan.style.display = 'none';
+        } else {
+            requiredCodeSpan.style.display = 'inline'; // Hoặc 'block' tùy thuộc vào cách bạn muốn hiển thị
+        }
+    });
 
     var cart = JSON.parse(localStorage.getItem("cart")); // Chuyển đổi JSON thành object hoặc array
 
@@ -431,7 +856,7 @@ $address2_shipper = $user[0]->address2_shipper;
     }
 
     // Bắt sự kiện thay đổi của danh mục
-    $('#country').change(function () {
+    $('#country').change(function() {
         var selectedCountry = $(this).val();
 
         $.ajax({
@@ -441,22 +866,21 @@ $address2_shipper = $user[0]->address2_shipper;
                 action: 'choseProvince',
                 parent_id: selectedCountry
             },
-            success: function (response) {
+            success: function(response) {
                 if (selectedCountry == 'United States') {
                     $('#state').empty().append('<option value="">Choose State</option>');
 
                     if (response.success) {
-                        $.each(response.data, function (index, provinceName) {
+                        $.each(response.data, function(index, provinceName) {
                             $('#state').append('<option value="' + provinceName + '">' + provinceName + '</option>');
                         });
                     } else {
                         alert(response.data.message || '<?php pll_e('No provinces found.') ?>');
                     }
-                }else {
+                } else {
                     $('#province').empty().append('<option value=""><?php pll_e('Choose province') ?></option>');
-
                     if (response.success) {
-                        $.each(response.data, function (index, provinceName) {
+                        $.each(response.data, function(index, provinceName) {
                             $('#province').append('<option value="' + provinceName + '">' + provinceName + '</option>');
                         });
                     } else {
@@ -465,23 +889,23 @@ $address2_shipper = $user[0]->address2_shipper;
                 }
 
             },
-            error: function () {
+            error: function() {
                 alert('<?php pll_e('Unable to fetch provinces. Please try again later.') ?>');
             }
         });
     });
-
 </script>
 <script defer>
     // $(document).ready(function () {
-        var total = $('.total-true').data('total');
+    var total = $('.total-true').data('total');
 
 
     //Áp mã giảm giá
-    $(document).ready(function () {
-        $('.code_apply').on('click', function (event) {
+    $(document).ready(function() {
+        $('.code_apply').on('click', function(event) {
             const carts = JSON.parse(localStorage.getItem('cart')) || [];
-            const voucherCode = $('input[name="voucher_code"]').val();
+            const voucherCodeInput = $('input[name="voucher_code"]');
+            const voucherCode = voucherCodeInput.val();
 
             // Check if any products are selected
             const selectedItems = carts.filter(item => item.select === true);
@@ -509,7 +933,7 @@ $address2_shipper = $user[0]->address2_shipper;
                     action: 'submitVoucher'
                 },
                 dataType: 'json',
-                beforeSend: function () {
+                beforeSend: function() {
                     Swal.fire({
                         title: 'Processing',
                         html: '<?php pll_e('Please wait...') ?>',
@@ -518,7 +942,7 @@ $address2_shipper = $user[0]->address2_shipper;
                         }
                     });
                 },
-                success: function (response) {
+                success: function(response) {
                     if (response.status === 1 || response.status === 3) {
                         const voucher = response.voucher;
                         let discountAmount = 0;
@@ -585,13 +1009,15 @@ $address2_shipper = $user[0]->address2_shipper;
                             updateTotal(shippingFee);
                         });
                     } else {
+                        voucherCodeInput.val('');
                         Swal.fire({
                             icon: 'warning',
                             text: response.message,
                         });
                     }
                 },
-                error: function (xhr) {
+                error: function(xhr) {
+                    voucherCodeInput.val('');
                     Swal.fire({
                         icon: 'error',
                         text: '<?php pll_e('An error occurred. Please try again.') ?>'
@@ -622,9 +1048,9 @@ $address2_shipper = $user[0]->address2_shipper;
         return parseFloat(shippingData[shippingData.length - 1].shipping_fee);
     }
     // Dữ liệu quốc gia dạng JSON
-        var jsoncountry = JSON.parse('<?= $json ?>');
+    var jsoncountry = JSON.parse('<?= $json ?>');
     console.log(jsoncountry);
-        // Hàm tính phí vận chuyển
+    // Hàm tính phí vận chuyển
     function calculateShipping(selectedCountry, selectedState = '') {
         // Tìm thông tin quốc gia từ jsoncountry
         var countryData = jsoncountry.find(item => item.region === selectedCountry);
@@ -633,7 +1059,7 @@ $address2_shipper = $user[0]->address2_shipper;
 
         if (countryData) {
             let shippingFee = 0;
-            var feeShip = '<?=$total_order ?>';
+            var feeShip = '<?= $total_order ?>';
 
             // Nếu là United States
             if (selectedCountry === 'United States') {
@@ -643,8 +1069,7 @@ $address2_shipper = $user[0]->address2_shipper;
                 if (totalValue > parseFloat(feeShip)) {
                     shippingFee = 0;
                     shippingFeeElement.text('<?php pll_e('Free of charge') ?>');
-                }
-                else {
+                } else {
                     let fee = getShippingFee(1, shipping_weightConty);
 
                     shippingFee = fee;
@@ -652,57 +1077,39 @@ $address2_shipper = $user[0]->address2_shipper;
                 }
                 updateTotal(shippingFee);
                 if (cityState) {
-                         if (selectedState) {
-                                            // Xử lý logic khi có danh sách tỉnh/thành phố
+                    if (selectedState) {
+                        // Xử lý logic khi có danh sách tỉnh/thành phố
                         // $('.input-field[name="state"]').off('change').on('change', function () {
-                                const selectedProvince = selectedState;
-                                const provinceData = cityState.find(city => city.city === selectedProvince);
-                                const shipping_weight = provinceData.shipping_weight;
-                                console.log(provinceData);
-                             if (provinceData) {
-                                    let cart = localStorage.getItem('cart');
+                        const selectedProvince = selectedState;
+                        const provinceData = cityState.find(city => city.city === selectedProvince);
+                        const shipping_weight = provinceData.shipping_weight;
+                        console.log(provinceData);
+                        if (provinceData) {
+                            let cart = localStorage.getItem('cart');
 
-                                if (cart) {
-                                    cart = JSON.parse(cart); // Chuyển chuỗi JSON thành object
-                                    let totalWeight = 0;
+                            if (cart) {
+                                cart = JSON.parse(cart); // Chuyển chuỗi JSON thành object
+                                let totalWeight = 0;
 
-                                    // Lọc chỉ các item có select là true
-                                    const selectedItems = cart.filter(item => item.select === true);
+                                // Lọc chỉ các item có select là true
+                                const selectedItems = cart.filter(item => item.select === true);
 
-                                    // Lặp qua các item đã được chọn
-                                    selectedItems.forEach(item => {
-                                        const weight = parseFloat(item.weight) || 0;
-                                        const qty = parseInt(item.qty) || 0;
+                                // Lặp qua các item đã được chọn
+                                selectedItems.forEach(item => {
+                                    const weight = parseFloat(item.weight) || 0;
+                                    const qty = parseInt(item.qty) || 0;
 
-                                        totalWeight += weight * qty;
-                                    });
+                                    totalWeight += weight * qty;
+                                });
 
-                                    // Tính phí ship dựa trên provinceData
-                                    shippingFee = totalWeight * parseFloat(provinceData.shipping_state || 0);
-                                    shippingFeeElement.text(`$${shippingFee.toFixed(2)}`);
-                                    shippingFeeElement.attr('data-shipping', shippingFee);
+                                // Tính phí ship dựa trên provinceData
+                                shippingFee = totalWeight * parseFloat(provinceData.shipping_state || 0);
+                                shippingFeeElement.text(`$${shippingFee.toFixed(2)}`);
+                                shippingFeeElement.attr('data-shipping', shippingFee);
 
-                                    // Cập nhật tổng giá trị
-                                    updateTotal(shippingFee);
-                                } else {
-
-                                    if (totalValue > parseFloat(feeShip)) {
-                                    shippingFee = 0;
-                                    shippingFeeElement.text('<?php pll_e('Free of charge') ?>');
-                                    shippingFeeElement.attr('data-shipping', 0);
-                                        updateTotal(shippingFee);
-                                } else {
-                                        let fee = getShippingFee(1, shipping_weightConty);
-
-                                        shippingFee = fee;
-                                    shippingFeeElement.text(`$${shippingFee}`);
-                                        updateTotal(shippingFee);
-                                }
-
-                                }
+                                // Cập nhật tổng giá trị
+                                updateTotal(shippingFee);
                             } else {
-                                console.log('Không có dữ liệu provinceData. Không tính phí ship.');
-                                shippingFeeElement.text('Free of charge');
 
                                 if (totalValue > parseFloat(feeShip)) {
                                     shippingFee = 0;
@@ -710,23 +1117,40 @@ $address2_shipper = $user[0]->address2_shipper;
                                     shippingFeeElement.attr('data-shipping', 0);
                                     updateTotal(shippingFee);
                                 } else {
-                                    const shipping_weightContyNew = countryData.shipping_weight;
-                                    const feee = getShippingFee(1 , shipping_weightContyNew)
-                                    shippingFee = feee;
+                                    let fee = getShippingFee(1, shipping_weightConty);
+
+                                    shippingFee = fee;
                                     shippingFeeElement.text(`$${shippingFee}`);
-                                    shippingFeeElement.attr('data-shipping', 10);
                                     updateTotal(shippingFee);
                                 }
 
                             }
+                        } else {
+                            console.log('Không có dữ liệu provinceData. Không tính phí ship.');
+                            shippingFeeElement.text('Free of charge');
+
+                            if (totalValue > parseFloat(feeShip)) {
+                                shippingFee = 0;
+                                shippingFeeElement.text('<?php pll_e('Free of charge') ?>');
+                                shippingFeeElement.attr('data-shipping', 0);
+                                updateTotal(shippingFee);
+                            } else {
+                                const shipping_weightContyNew = countryData.shipping_weight;
+                                const feee = getShippingFee(1, shipping_weightContyNew)
+                                shippingFee = feee;
+                                shippingFeeElement.text(`$${shippingFee}`);
+                                shippingFeeElement.attr('data-shipping', 10);
+                                updateTotal(shippingFee);
+                            }
+
+                        }
                         // });
-                    }
-                         else {
-                                    // Xử lý logic khi có danh sách tỉnh/thành phố
-                        $('.input-field[name="state"]').off('change').on('change', function ()  {
-                                const selectedProvince = $(this).val();
-                                const provinceData = cityState.find(city => city.city === selectedProvince);
-                                const shipping_weightContry = countryData.shipping_weight;
+                    } else {
+                        // Xử lý logic khi có danh sách tỉnh/thành phố
+                        $('.input-field[name="state"]').off('change').on('change', function() {
+                            const selectedProvince = $(this).val();
+                            const provinceData = cityState.find(city => city.city === selectedProvince);
+                            const shipping_weightContry = countryData.shipping_weight;
                             if (provinceData) {
                                 const shipping_weight = provinceData.shipping_weight;
                                 let cart = localStorage.getItem('cart');
@@ -745,7 +1169,7 @@ $address2_shipper = $user[0]->address2_shipper;
 
                                         totalWeight += weight * qty;
                                     });
-                                    const fee = getShippingFee(totalWeight , shipping_weight)
+                                    const fee = getShippingFee(totalWeight, shipping_weight)
                                     // Tính phí ship dựa trên provinceData
                                     shippingFee = totalWeight * fee;
                                     shippingFeeElement.text(`$${shippingFee.toFixed(2)}`);
@@ -756,18 +1180,17 @@ $address2_shipper = $user[0]->address2_shipper;
                                 } else {
 
                                     if (totalValue > parseFloat(feeShip)) {
-                                    shippingFee = 0;
-                                    shippingFeeElement.text('<?php pll_e('Free of charge') ?>');
-                                    shippingFeeElement.attr('data-shipping', 0);
-                                } else {
-                                    const fee = getShippingFee(1 , shipping_weightContry)
-                                    shippingFee = fee;
-                                    shippingFeeElement.text(`$${shippingFee}`);
+                                        shippingFee = 0;
+                                        shippingFeeElement.text('<?php pll_e('Free of charge') ?>');
+                                        shippingFeeElement.attr('data-shipping', 0);
+                                    } else {
+                                        const fee = getShippingFee(1, shipping_weightContry)
+                                        shippingFee = fee;
+                                        shippingFeeElement.text(`$${shippingFee}`);
+                                    }
+                                    updateTotal(shippingFee);
                                 }
-                                updateTotal(shippingFee);
-                                }
-                            }
-                            else {
+                            } else {
                                 console.log('Không có dữ liệu provinceData. Không tính phí ship.');
                                 shippingFeeElement.text('Free of charge');
 
@@ -777,7 +1200,7 @@ $address2_shipper = $user[0]->address2_shipper;
                                     shippingFeeElement.attr('data-shipping', 0);
                                     updateTotal(shippingFee);
                                 } else {
-                                    const fee = getShippingFee(1 , shipping_weightContry)
+                                    const fee = getShippingFee(1, shipping_weightContry)
                                     shippingFee = fee;
                                     shippingFeeElement.text(`$${shippingFee}`);
                                     shippingFeeElement.attr('data-shipping', 10);
@@ -788,25 +1211,26 @@ $address2_shipper = $user[0]->address2_shipper;
                         });
                     }
 
-                }
-                else {
+                } else {
                     // Nếu không có cityState, dùng phí ship quốc gia
                     if (totalValue > parseFloat(feeShip)) {
                         shippingFee = 0;
                         shippingFeeElement.text('Free of charge');
                     } else {
                         const shipping_weightContyNew = countryData.shipping_weight;
-                        const feee = getShippingFee(1 , shipping_weightContyNew)
+                        const feee = getShippingFee(1, shipping_weightContyNew)
                         shippingFee = feee;
                         shippingFeeElement.text(`$${shippingFee}`);
                     }
                     shippingFeeElement.attr('data-shipping', shippingFee);
                 }
                 updateTotal(shippingFee);
+                
                 $('.Vietnam').css('display', 'none');
                 $('.noVietnam').css('display', 'block');
-            } else {
-                // Quốc gia khác United States
+            } else if (selectedCountry === 'Vietnam') {
+                console.log("Tiến về dinh độc lập");
+                // Quốc gia VietNam
                 let cart = localStorage.getItem('cart');
                 const cityState = countryData.city_state;
                 const minimum_volume = countryData.minimum_volume;
@@ -814,7 +1238,7 @@ $address2_shipper = $user[0]->address2_shipper;
 
                 if (cityState) {
                     if (selectedState) {
-                        console.log(selectedState ,cityState);
+                        console.log(selectedState, cityState);
                         const selectedProvince = selectedState;
                         const provinceData = cityState.find(city => city.city === selectedProvince);
                         //
@@ -841,14 +1265,16 @@ $address2_shipper = $user[0]->address2_shipper;
                             // if (totalWeight <= minimum_volume){
                             //     totalWeight = minimum_volume;
                             // }else {
-                                totalWeight = roundUp(totalWeight);
+                            totalWeight = roundUp(totalWeight);
                             // }
-
+                            if (totalWeight < 5) {
+                                totalWeight = 5
+                            }
                             if (provinceData) {
 
                                 const shipping_weight = provinceData.shipping_weight;
                                 console.log(shipping_weight);
-                                const fees = getShippingFee(totalWeight , shipping_weight);
+                                const fees = getShippingFee(totalWeight, shipping_weight);
                                 console.log(fees);
                                 // Nếu chọn tỉnh/thành phố, chỉ tính phí ship của tỉnh
                                 shippingFee = totalWeight * fees;
@@ -857,7 +1283,7 @@ $address2_shipper = $user[0]->address2_shipper;
                                 // Hiển thị phí vận chuyển
 
                             } else {
-                                const feer = getShippingFee(totalWeight , shipping_weightContry)
+                                const feer = getShippingFee(totalWeight, shipping_weightContry)
                                 // Nếu không chọn tỉnh/thành phố, tính phí ship quốc gia
                                 shippingFee = totalWeight * feer;
                                 updateTotal(shippingFee); // Hiển thị phí vận chuyển
@@ -878,74 +1304,77 @@ $address2_shipper = $user[0]->address2_shipper;
                             shippingFeeElement.text('$0.00');
                             shippingFeeElement.attr('data-shipping', 0);
                         }
-                    }
-                    else {
-                        $('.input-field[name="province"]').off('change').on('change', function () {
-                        const selectedProvince = $(this).val();
-                        const provinceData = cityState.find(city => city.city === selectedProvince);
-                        const shipping_weight = provinceData.shipping_weight;
-                            console.log(shipping_weight);
+                    } else {
+                        $('.input-field[name="province"]').off('change').on('change', function() {
+                            const selectedProvince = $(this).val();
+                            const provinceData = cityState.find(city => city.city === selectedProvince);
+                            // const shipping_weight = provinceData.shipping_weight;
+                            // console.log(selectedProvince);
+                            // console.log(provinceData);
+                            // console.log(shipping_weight)
 
-                        let cart = localStorage.getItem('cart');
+                            let cart = localStorage.getItem('cart');
 
-                        if (cart) {
-                            cart = JSON.parse(cart); // Chuyển chuỗi JSON thành object
-                            let totalWeight = 0;
-                            let totalQty = 0;
+                            if (cart) {
+                                cart = JSON.parse(cart); // Chuyển chuỗi JSON thành object
+                                let totalWeight = 0;
+                                let totalQty = 0;
 
-                            // Lọc chỉ các item có select là true
-                            const selectedItems = cart.filter(item => item.select === true);
+                                // Lọc chỉ các item có select là true
+                                const selectedItems = cart.filter(item => item.select === true);
 
-                            // Lặp qua các item đã được chọn
-                            selectedItems.forEach(item => {
-                                const weight = parseFloat(item.weight) || 0;
-                                const qty = parseInt(item.qty) || 0;
+                                // Lặp qua các item đã được chọn
+                                selectedItems.forEach(item => {
+                                    const weight = parseFloat(item.weight) || 0;
+                                    const qty = parseInt(item.qty) || 0;
 
-                                totalWeight += weight * qty;
-                                totalQty += qty;
-                            });
-                            // if (totalWeight <= minimum_volume){
-                            //     totalWeight = minimum_volume;
-                            // }else {
+                                    totalWeight += weight * qty;
+                                    totalQty += qty;
+                                });
+                                // if (totalWeight <= minimum_volume){
+                                //     totalWeight = minimum_volume;
+                                // }else {
                                 totalWeight = roundUp(totalWeight);
-                            // }
+                                // }
+                                if (totalWeight < 5) {
+                                    totalWeight = 5
+                                }
 
+                                // const shipfeeState = parseFloat(provinceData.shipping_state || 0);
+                                // const shipfeeProvince = parseFloat(countryData.shipping || 0);
 
-                            // const shipfeeState = parseFloat(provinceData.shipping_state || 0);
-                            // const shipfeeProvince = parseFloat(countryData.shipping || 0);
+                                if (provinceData) {
+                                    const shipping_weight = provinceData.shipping_weight;
+                                    const feeState = getShippingFee(totalWeight, shipping_weight);
+                                    // Nếu chọn tỉnh/thành phố, chỉ tính phí ship của tỉnh
+                                    shippingFee = totalWeight * feeState;
+                                } else {
+                                    const feeProvince = getShippingFee(totalWeight, shipping_weightContry);
+                                    // Nếu không chọn tỉnh/thành phố, tính phí ship quốc gia
+                                    shippingFee = totalWeight * feeProvince;
+                                }
 
-                            if (provinceData) {
-                                const feeState = getShippingFee(totalWeight, shipping_weight);
-                                // Nếu chọn tỉnh/thành phố, chỉ tính phí ship của tỉnh
-                                shippingFee = totalWeight * feeState;
+                                // Hiển thị phí vận chuyển
+                                shippingFeeElement.text(`$${shippingFee.toFixed(2)}`);
+                                shippingFeeElement.attr('data-shipping', shippingFee);
+
+                                // Cập nhật tổng giá trị
+                                updateTotal(shippingFee);
+
+                                console.log(`Province: ${selectedProvince}, Shipping Fee: $${shippingFee}`);
+                                console.log('Selected Items:', selectedItems);
+                                console.log('Total Weight:', totalWeight);
+                                console.log('Total Quantity:', totalQty);
                             } else {
-                                const feeProvince = getShippingFee(totalWeight, shipping_weightContry);
-                                // Nếu không chọn tỉnh/thành phố, tính phí ship quốc gia
-                                shippingFee = totalWeight * feeProvince;
+                                console.error('Cart không tồn tại trong localStorage');
+                                shippingFeeElement.text('$0.00');
+                                shippingFeeElement.attr('data-shipping', 0);
                             }
+                        });
+                    }
 
-                            // Hiển thị phí vận chuyển
-                            shippingFeeElement.text(`$${shippingFee.toFixed(2)}`);
-                            shippingFeeElement.attr('data-shipping', shippingFee);
-
-                            // Cập nhật tổng giá trị
-                            updateTotal(shippingFee);
-
-                            console.log(`Province: ${selectedProvince}, Shipping Fee: $${shippingFee}`);
-                            console.log('Selected Items:', selectedItems);
-                            console.log('Total Weight:', totalWeight);
-                            console.log('Total Quantity:', totalQty);
-                        } else {
-                            console.error('Cart không tồn tại trong localStorage');
-                            shippingFeeElement.text('$0.00');
-                            shippingFeeElement.attr('data-shipping', 0);
-                        }
-                    });
-                           }
-
-                }
-                else {
-                    $('.input-field[name="province"]').off('change').on('change', function () {
+                } else {
+                    $('.input-field[name="province"]').off('change').on('change', function() {
                         const selectedProvince = $(this).val();
                         // const provinceData = cityState.find(city => city.city === selectedProvince);
                         const shipping_weightContry = countryData.shipping_weight;
@@ -968,10 +1397,13 @@ $address2_shipper = $user[0]->address2_shipper;
                                 totalWeight += weight * qty;
                                 totalQty += qty;
                             });
-                            if (totalWeight <= minimum_volume){
+                            if (totalWeight <= minimum_volume) {
                                 totalWeight = minimum_volume;
-                            }else {
+                            } else {
                                 totalWeight = roundUp(totalWeight);
+                            }
+                            if (totalWeight < 5) {
+                                totalWeight = 5
                             }
                             const fee = getShippingFee(totalWeight, shipping_weightContry);
                             let shipinga = parseFloat(countryData.shipping || 0);
@@ -979,8 +1411,8 @@ $address2_shipper = $user[0]->address2_shipper;
                             //     // Nếu chọn tỉnh/thành phố, chỉ tính phí ship của tỉnh
                             //     shippingFee = totalWeight * parseFloat(provinceData.shipping_state || 0);
                             // } else {
-                                // Nếu không chọn tỉnh/thành phố, tính phí ship quốc gia
-                                shippingFee = totalWeight * fee;
+                            // Nếu không chọn tỉnh/thành phố, tính phí ship quốc gia
+                            shippingFee = totalWeight * fee;
                             // }
 
                             // Hiển thị phí vận chuyển
@@ -1018,12 +1450,256 @@ $address2_shipper = $user[0]->address2_shipper;
 
                             totalWeight += weight * qty;
                             totalQty += qty;
-                            console.log(qty,weight);
+                            console.log(qty, weight);
                         });
                         // if (totalWeight <= minimum_volume){
                         //     totalWeight = minimum_volume;
                         // }else {
+                        totalWeight = roundUp(totalWeight);
+                        // }
+                        if (totalWeight < 5) {
+                            totalWeight = 5
+                        }
+                        // Tính phí vận chuyển cơ bản
+                        const fee = getShippingFee(totalWeight, shipping_weightContry);
+                        shippingFee = totalWeight * fee;
+
+                        shippingFeeElement.text(`$${shippingFee.toFixed(2)}`);
+                        shippingFeeElement.attr('data-shipping', shippingFee);
+                        updateTotal(shippingFee);
+                    } else {
+                        console.error('Cart không phải là danh sách các item!');
+                        shippingFeeElement.text('$0.00');
+                        shippingFeeElement.attr('data-shipping', 0);
+                    }
+                } else {
+                    console.error('Cart không tồn tại trong localStorage');
+                    shippingFeeElement.text('$0.00');
+                    shippingFeeElement.attr('data-shipping', 0);
+                }
+
+                $('.noVietnam').css('display', 'none');
+                $('.Vietnam').css('display', 'block');
+            } else {
+                // Quốc gia khác United States
+                let cart = localStorage.getItem('cart');
+                const cityState = countryData.city_state;
+                const minimum_volume = countryData.minimum_volume;
+                const shipping_weightContry = countryData.shipping_weight;
+
+                if (cityState) {
+                    if (selectedState) {
+                        console.log(selectedState, cityState);
+                        const selectedProvince = selectedState;
+                        const provinceData = cityState.find(city => city.city === selectedProvince);
+                        //
+                        console.log(provinceData);
+                        let cart = localStorage.getItem('cart');
+
+                        if (cart) {
+                            cart = JSON.parse(cart); // Chuyển chuỗi JSON thành object
+                            let totalWeight = 0;
+                            let totalQty = 0;
+
+                            // Lọc chỉ các item có select là true
+                            const selectedItems = cart.filter(item => item.select === true);
+
+                            // Lặp qua các item đã được chọn
+                            selectedItems.forEach(item => {
+                                const weight = parseFloat(item.weight) || 0;
+                                const qty = parseInt(item.qty) || 0;
+
+                                totalWeight += weight * qty;
+
+                                totalQty += qty;
+                            });
+                            // if (totalWeight <= minimum_volume){
+                            //     totalWeight = minimum_volume;
+                            // }else {
                             totalWeight = roundUp(totalWeight);
+                            // }
+
+                            if (provinceData) {
+
+                                const shipping_weight = provinceData.shipping_weight;
+                                console.log(shipping_weight);
+                                const fees = getShippingFee(totalWeight, shipping_weight);
+                                console.log(fees);
+                                // Nếu chọn tỉnh/thành phố, chỉ tính phí ship của tỉnh
+                                shippingFee = totalWeight * fees;
+                                console.log('phí ship : ' + shippingFee);
+                                updateTotal(shippingFee);
+                                // Hiển thị phí vận chuyển
+
+                            } else {
+                                const feer = getShippingFee(totalWeight, shipping_weightContry)
+                                // Nếu không chọn tỉnh/thành phố, tính phí ship quốc gia
+                                shippingFee = totalWeight * feer;
+                                updateTotal(shippingFee); // Hiển thị phí vận chuyển
+                                // shippingFeeElement.text(`$${shippingFee.toFixed(2)}`);
+                                // shippingFeeElement.attr('data-shipping', shippingFee);
+                            }
+                            shippingFeeElement.text(`$${shippingFee.toFixed(2)}`);
+                            shippingFeeElement.attr('data-shipping', shippingFee);
+                            // Cập nhật tổng giá trị
+
+
+                            console.log(`Province: ${selectedProvince}, Shipping Fees: $${shippingFee}`);
+                            console.log('Selected Items:', selectedItems);
+                            console.log('Total Weight:', totalWeight);
+                            console.log('Total Quantity:', totalQty);
+                        } else {
+                            console.error('Cart không tồn tại trong localStorage');
+                            shippingFeeElement.text('$0.00');
+                            shippingFeeElement.attr('data-shipping', 0);
+                        }
+                    } else {
+                        $('.input-field[name="province"]').off('change').on('change', function() {
+                            const selectedProvince = $(this).val();
+                            const provinceData = cityState.find(city => city.city === selectedProvince);
+                            // const shipping_weight = provinceData.shipping_weight;
+                            // console.log(selectedProvince);
+                            // console.log(provinceData);
+                            // console.log(shipping_weight)
+
+                            let cart = localStorage.getItem('cart');
+
+                            if (cart) {
+                                cart = JSON.parse(cart); // Chuyển chuỗi JSON thành object
+                                let totalWeight = 0;
+                                let totalQty = 0;
+
+                                // Lọc chỉ các item có select là true
+                                const selectedItems = cart.filter(item => item.select === true);
+
+                                // Lặp qua các item đã được chọn
+                                selectedItems.forEach(item => {
+                                    const weight = parseFloat(item.weight) || 0;
+                                    const qty = parseInt(item.qty) || 0;
+
+                                    totalWeight += weight * qty;
+                                    totalQty += qty;
+                                });
+                                // if (totalWeight <= minimum_volume){
+                                //     totalWeight = minimum_volume;
+                                // }else {
+                                totalWeight = roundUp(totalWeight);
+                                // }
+
+
+                                // const shipfeeState = parseFloat(provinceData.shipping_state || 0);
+                                // const shipfeeProvince = parseFloat(countryData.shipping || 0);
+
+                                if (provinceData) {
+                                    const shipping_weight = provinceData.shipping_weight;
+                                    const feeState = getShippingFee(totalWeight, shipping_weight);
+                                    // Nếu chọn tỉnh/thành phố, chỉ tính phí ship của tỉnh
+                                    shippingFee = totalWeight * feeState;
+                                } else {
+                                    const feeProvince = getShippingFee(totalWeight, shipping_weightContry);
+                                    // Nếu không chọn tỉnh/thành phố, tính phí ship quốc gia
+                                    shippingFee = totalWeight * feeProvince;
+                                }
+
+                                // Hiển thị phí vận chuyển
+                                shippingFeeElement.text(`$${shippingFee.toFixed(2)}`);
+                                shippingFeeElement.attr('data-shipping', shippingFee);
+
+                                // Cập nhật tổng giá trị
+                                updateTotal(shippingFee);
+
+                                console.log(`Province: ${selectedProvince}, Shipping Fee: $${shippingFee}`);
+                                console.log('Selected Items:', selectedItems);
+                                console.log('Total Weight:', totalWeight);
+                                console.log('Total Quantity:', totalQty);
+                            } else {
+                                console.error('Cart không tồn tại trong localStorage');
+                                shippingFeeElement.text('$0.00');
+                                shippingFeeElement.attr('data-shipping', 0);
+                            }
+                        });
+                    }
+
+                } else {
+                    $('.input-field[name="province"]').off('change').on('change', function() {
+                        const selectedProvince = $(this).val();
+                        // const provinceData = cityState.find(city => city.city === selectedProvince);
+                        const shipping_weightContry = countryData.shipping_weight;
+
+                        let cart = localStorage.getItem('cart');
+
+                        if (cart) {
+                            cart = JSON.parse(cart); // Chuyển chuỗi JSON thành object
+                            let totalWeight = 0;
+                            let totalQty = 0;
+
+                            // Lọc chỉ các item có select là true
+                            const selectedItems = cart.filter(item => item.select === true);
+
+                            // Lặp qua các item đã được chọn
+                            selectedItems.forEach(item => {
+                                const weight = parseFloat(item.weight) || 0;
+                                const qty = parseInt(item.qty) || 0;
+
+                                totalWeight += weight * qty;
+                                totalQty += qty;
+                            });
+                            if (totalWeight <= minimum_volume) {
+                                totalWeight = minimum_volume;
+                            } else {
+                                totalWeight = roundUp(totalWeight);
+                            }
+                            const fee = getShippingFee(totalWeight, shipping_weightContry);
+                            let shipinga = parseFloat(countryData.shipping || 0);
+                            // if (provinceData) {
+                            //     // Nếu chọn tỉnh/thành phố, chỉ tính phí ship của tỉnh
+                            //     shippingFee = totalWeight * parseFloat(provinceData.shipping_state || 0);
+                            // } else {
+                            // Nếu không chọn tỉnh/thành phố, tính phí ship quốc gia
+                            shippingFee = totalWeight * fee;
+                            // }
+
+                            // Hiển thị phí vận chuyển
+                            shippingFeeElement.text(`$${shippingFee.toFixed(2)}`);
+                            shippingFeeElement.attr('data-shipping', shippingFee);
+
+                            // Cập nhật tổng giá trị
+                            updateTotal(shippingFee);
+
+                            console.log(`Province: ${selectedProvince}, Shipping Fee: $${shippingFee}`);
+                            console.log('Selected Items:', selectedItems);
+                            console.log('Total Weight:', totalWeight);
+                            console.log('Total Quantity:', totalQty);
+                        } else {
+                            console.error('Cart không tồn tại trong localStorage');
+                            shippingFeeElement.text('$0.00');
+                            shippingFeeElement.attr('data-shipping', 0);
+                        }
+                    });
+                }
+                if (cart) {
+                    cart = JSON.parse(cart); // Chuyển chuỗi JSON thành object
+
+                    if (Array.isArray(cart)) {
+                        let totalWeight = 0;
+                        let totalQty = 0;
+
+                        // Lọc chỉ các item có select là true
+                        const selectedItems = cart.filter(item => item.select === true);
+
+                        // Lặp qua các item đã được chọn
+                        selectedItems.forEach(item => {
+                            const weight = parseFloat(item.weight) || 0;
+                            const qty = parseInt(item.qty) || 0;
+
+                            totalWeight += weight * qty;
+                            totalQty += qty;
+                            console.log(qty, weight);
+                        });
+                        // if (totalWeight <= minimum_volume){
+                        //     totalWeight = minimum_volume;
+                        // }else {
+                        totalWeight = roundUp(totalWeight);
                         // }
                         // Tính phí vận chuyển cơ bản
                         const fee = getShippingFee(totalWeight, shipping_weightContry);
@@ -1037,8 +1713,7 @@ $address2_shipper = $user[0]->address2_shipper;
                         shippingFeeElement.text('$0.00');
                         shippingFeeElement.attr('data-shipping', 0);
                     }
-                }
-                else {
+                } else {
                     console.error('Cart không tồn tại trong localStorage');
                     shippingFeeElement.text('$0.00');
                     shippingFeeElement.attr('data-shipping', 0);
@@ -1079,60 +1754,60 @@ $address2_shipper = $user[0]->address2_shipper;
 
 
     // Bắt sự kiện thay đổi giá trị ô select "country"
-        $('.input-field[name="country"]').on('change', function () {
-            const selectedCountry = $(this).val();
-            calculateShipping(selectedCountry);
-        });
+    $('.input-field[name="country"]').on('change', function() {
+        const selectedCountry = $(this).val();
+        calculateShipping(selectedCountry);
+    });
 
-        // Khởi tạo phí vận chuyển khi tải trang
-        // const initialCountry = $('.input-field[name="country"]').val();
-        // calculateShipping(initialCountry);
+    // Khởi tạo phí vận chuyển khi tải trang
+    // const initialCountry = $('.input-field[name="country"]').val();
+    // calculateShipping(initialCountry);
     // });
-  $('input[name="payment"]').on('change', function () {
-    const selectedValue = $(this).val();
-    const country = $(this).data('country');
-    const state = $(this).data('state');
+    $('input[name="payment"]').on('change', function() {
+        const selectedValue = $(this).val();
+        const country = $(this).data('country');
+        const state = $(this).data('state');
 
-    console.log('Selected payment value:', selectedValue);
-    if (selectedValue == 1) {
-        $('#submit-check-out').css('display', 'none');
-         $('#submit-check-out-info').css('display', 'block');
-         calculateShipping(country,state)
-    }else {
-         $('#submit-check-out').css('display', 'block');
-         $('#submit-check-out-info').css('display', 'none');
-           const initialCountry = $('.input-field[name="country"]').val();
-        calculateShipping(initialCountry);
-    }
-});
+        console.log('Selected payment value:', selectedValue);
+        if (selectedValue == 1) {
+            $('#submit-check-out').css('display', 'none');
+            $('#submit-check-out-info').css('display', 'block');
+            calculateShipping(country, state)
+        } else {
+            $('#submit-check-out').css('display', 'block');
+            $('#submit-check-out-info').css('display', 'none');
+            const initialCountry = $('.input-field[name="country"]').val();
+            calculateShipping(initialCountry);
+        }
+    });
 
-     function ConfirmOrderInfomation() {
+    function ConfirmOrderInfomation() {
         const radio = $('input[name="payment"][value="1"]'); // Chọn radio có value="1"
-  const dataAttributes = radio.data(); // Lấy toàn bộ `data-` thuộc tính
-if (radio.length > 0) {
-  var fullName = dataAttributes.fullname;
-        var email = dataAttributes.email;
-        var phone_numer = dataAttributes.phone_number;
-        var country = dataAttributes.country;
-        var province = dataAttributes.state;
-        var address1 = dataAttributes.address1_shipper;
-        var address2 = dataAttributes.address2_shipper;
-        var voucher_code = $('input[name="voucher_code"]').val();
-        var city = dataAttributes.city;
-        var state = dataAttributes.state;
-        var postaCode = dataAttributes.zipcodeShipper;
-        var zipCode = dataAttributes.zipcodeShipper;
-        var regexEmail = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
-        var totalPrice = total;
-        var price = $('.total-sub').data('true');
-        var discount = $('.discount-fee').data('discount');
-        var shippingFee = $('.shipping-fee').data('shipping');
-        // const saveInfo = $('input[name="saveInformation"]').is(':checked') ? $('input[name="saveInformation"]').val() : 0;
+        const dataAttributes = radio.data(); // Lấy toàn bộ `data-` thuộc tính
+        if (radio.length > 0) {
+            var fullName = dataAttributes.fullname;
+            var email = dataAttributes.email;
+            var phone_numer = dataAttributes.phone_number;
+            var country = dataAttributes.country;
+            var province = dataAttributes.state;
+            var address1 = dataAttributes.address1_shipper;
+            var address2 = dataAttributes.address2_shipper;
+            var voucher_code = $('input[name="voucher_code"]').val();
+            var city = dataAttributes.city;
+            var state = dataAttributes.state;
+            var postaCode = dataAttributes.zipcodeShipper;
+            var zipCode = dataAttributes.zipcodeShipper;
+            var regexEmail = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
+            var totalPrice = total;
+            var price = $('.total-sub').data('true');
+            var discount = $('.discount-fee').data('discount');
+            var shippingFee = $('.shipping-fee').data('shipping');
+            // const saveInfo = $('input[name="saveInformation"]').is(':checked') ? $('input[name="saveInformation"]').val() : 0;
 
-}
+        }
         console.log(dataAttributes);
         // if (saveInfo == 1) {
-             var user_po = {
+        var user_po = {
             fullName,
             country,
             province,
@@ -1163,7 +1838,7 @@ if (radio.length > 0) {
             }
         });
 
-// In ra selectedItems dưới dạng mảng
+        // In ra selectedItems dưới dạng mảng
         console.log(selectedItems);
 
         var form = $('#check-out')[0];
@@ -1204,7 +1879,7 @@ if (radio.length > 0) {
             contentType: false,
             data: formData,
             dataType: 'json',
-            beforeSend: function () {
+            beforeSend: function() {
                 Swal.fire({
                     title: 'Processing',
                     html: '<?php pll_e('Please wait...') ?>',
@@ -1213,7 +1888,7 @@ if (radio.length > 0) {
                     }
                 });
             },
-            success: function (response) {
+            success: function(response) {
                 if (response.status === 1) {
                     Swal.fire({
                         icon: 'success',
@@ -1232,7 +1907,7 @@ if (radio.length > 0) {
                     });
                 }
             },
-            error: function (xhr) {
+            error: function(xhr) {
                 Swal.fire({
                     icon: 'error',
                     text: '<?php pll_e('An error occurred. Please try again.') ?>'
@@ -1242,7 +1917,6 @@ if (radio.length > 0) {
     }
 
     function ConfirmOrder() {
-
         var fullName = $('input[name="fullName"]').val();
         var email = $('input[name="email"]').val();
         var phone_numer = $('input[name="phone_numer"]').val();
@@ -1312,12 +1986,14 @@ if (radio.length > 0) {
             return false;
         }
         if (country != 'United States') {
-            if (postaCode == '') {
-                Swal.fire({
-                    icon: 'error',
-                    text: '<?php pll_e('Please enter your Postal code') ?>'
-                });
-                return false;
+            if (country != 'Vietnam') {
+                if (postaCode == '') {
+                    Swal.fire({
+                        icon: 'error',
+                        text: '<?php pll_e('Please enter your Postal code') ?>'
+                    });
+                    return false;
+                }
             }
             if (province == '') {
                 Swal.fire({
@@ -1326,8 +2002,7 @@ if (radio.length > 0) {
                 });
                 return false;
             }
-        }
-        else {
+        } else {
             if (state == '') {
                 Swal.fire({
                     icon: 'error',
@@ -1344,18 +2019,18 @@ if (radio.length > 0) {
             }
         }
         if (saveInfo == 1) {
-             var user_po = {
-            fullName,
-            country,
-            province,
-            email,
-            address1,
-            phone_numer,
-            city,
-            state,
-            zipCode
-        }
-        localStorage.setItem("userBuy", JSON.stringify(user_po));
+            var user_po = {
+                fullName,
+                country,
+                province,
+                email,
+                address1,
+                phone_numer,
+                city,
+                state,
+                zipCode
+            }
+            localStorage.setItem("userBuy", JSON.stringify(user_po));
         }
 
 
@@ -1375,7 +2050,7 @@ if (radio.length > 0) {
             }
         });
 
-// In ra selectedItems dưới dạng mảng
+        // In ra selectedItems dưới dạng mảng
         console.log(selectedItems);
 
         var form = $('#check-out')[0];
@@ -1416,7 +2091,7 @@ if (radio.length > 0) {
             contentType: false,
             data: formData,
             dataType: 'json',
-            beforeSend: function () {
+            beforeSend: function() {
                 Swal.fire({
                     title: 'Processing',
                     html: '<?php pll_e('Please wait...') ?>',
@@ -1425,7 +2100,7 @@ if (radio.length > 0) {
                     }
                 });
             },
-            success: function (response) {
+            success: function(response) {
                 if (response.status === 1) {
                     Swal.fire({
                         icon: 'success',
@@ -1444,7 +2119,7 @@ if (radio.length > 0) {
                     });
                 }
             },
-            error: function (xhr) {
+            error: function(xhr) {
                 Swal.fire({
                     icon: 'error',
                     text: '<?php pll_e('An error occurred. Please try again.') ?>'

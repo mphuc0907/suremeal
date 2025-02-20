@@ -1,7 +1,44 @@
 <?php /* Template Name: Product-List */ ?>
 <?php
 get_header();
+function get_affiliate_discount($product_id)
+{
+    if (!isset($_COOKIE['distribution_code'])) {
+        return null;
+    }
 
+    global $wpdb;
+    $distribution_code = sanitize_text_field($_COOKIE['distribution_code']);
+
+    $affiliate = $wpdb->get_row($wpdb->prepare(
+        "SELECT * FROM wp_affiliate WHERE distribution_code = %s AND status = 1",
+        $distribution_code
+    ));
+
+    if (!$affiliate) {
+        return null;
+    }
+
+    // Decode the product information JSON
+    $product_info = json_decode($affiliate->product_infomation, true);
+    if (!is_array($product_info)) {
+        return null;
+    }
+
+    // Find if this product is in the affiliate's product list
+    $product_entry = array_filter($product_info, function ($item) use ($product_id) {
+        return $item['id'] == $product_id;
+    });
+
+    if (empty($product_entry)) {
+        return null;
+    }
+
+    return [
+        'discount_percentage' => $affiliate->discount,
+        'product_price' => reset($product_entry)['price']
+    ];
+}
 // Function to get dealer discount for a specific product
 function get_dealer_discount($dealer_id, $product_id)
 {
@@ -20,7 +57,8 @@ function get_dealer_discount($dealer_id, $product_id)
 // Function to calculate final price with dealer discount
 function calculate_dealer_price($original_price, $discount)
 {
-    if (!$discount) return false;
+    if (!$discount)
+        return false;
 
     if ($discount->discount_type == 0) {
         // Fixed amount discount
@@ -40,8 +78,8 @@ if ($authenticated_dealer) {
 
 $meta_query = [
     [
-        'key'     => 'view_product',
-        'value'   => true,
+        'key' => 'view_product',
+        'value' => true,
         'compare' => '='
     ]
 ];
@@ -67,19 +105,60 @@ $filter_params = [
 $sort_order = $filter_params['sort'];
 
 // Build search query
+function get_filtered_products($args)
+{
+    global $paged;
+
+    // Store original paged value
+    $original_paged = $paged;
+
+    // Get total posts for the query without pagination
+    $temp_args = $args;
+    $temp_args['posts_per_page'] = -1;
+    $temp_query = new WP_Query($temp_args);
+    $total_posts = $temp_query->post_count;
+    wp_reset_postdata();
+
+    // Calculate total pages
+    $posts_per_page = $args['posts_per_page'];
+    $total_pages = ceil($total_posts / $posts_per_page);
+
+    // If current page would be empty, reset to last available page
+    if ($paged > $total_pages && $total_pages > 0) {
+        $args['paged'] = $total_pages;
+    } elseif ($total_posts === 0) {
+        // If no posts found, reset page to 1
+        $args['paged'] = 1;
+    }
+
+    // Run th$meta_keye final query
+    $query = new WP_Query($args);
+
+    // If we had to adjust the page, update the global pagination
+    if ($query->max_num_pages < $original_paged) {
+        global $wp_query;
+        $wp_query->max_num_pages = $query->max_num_pages;
+        set_query_var('paged', $args['paged']);
+    }
+
+    return $query;
+}
+
+// Example usage in your template:
 $args = [
     'post_type' => 'product',
     'posts_per_page' => 9,
     'paged' => max(1, get_query_var('paged')),
     'post_status' => 'publish',
-    'meta_query'     => array(
-        array(
-            'key'     => 'view_product',
-            'value'   => true,
-            'compare' => '='
-        ),
-    ),
+    'meta_query' => $meta_query,
+    'tax_query' => $tax_query,
+    'orderby' => $order_by,
+    'order' => $order
 ];
+
+if ($meta_key) {
+    $args['meta_key'] = $meta_key;
+}
 $arg_query = new WP_Query($args);
 
 
@@ -93,10 +172,10 @@ if ($filter_params['min_price'] !== null || $filter_params['max_price'] !== null
     $min_price = $filter_params['min_price'] ?? 0;
     $max_price = $filter_params['max_price'] ?? PHP_INT_MAX;
     $meta_query[] = [
-        'key'     => 'price',
-        'value'   => [$min_price, $max_price],
+        'key' => 'price',
+        'value' => [$min_price, $max_price],
         'compare' => 'BETWEEN',
-        'type'    => 'NUMERIC',
+        'type' => 'NUMERIC',
     ];
 }
 
@@ -162,14 +241,119 @@ switch ($filter_params['sort']) {
         break;
 
     case 'low_price':
+        // Add a calculated minimum price field for sorting
+        add_action('pre_get_posts', function ($query) {
+            if ($query->is_main_query()) {
+                $query->set('meta_query', array(
+                    array(
+                        'relation' => 'OR',
+                        array(
+                            'key' => 'price',
+                            'type' => 'NUMERIC'
+                        ),
+                        array(
+                            'key' => 'sale_price',
+                            'type' => 'NUMERIC'
+                        )
+                    ),
+                    'min_price_clause' => array(
+                        'key' => 'min_price',
+                        'compare' => 'EXISTS',
+                        'type' => 'NUMERIC'
+                    )
+                ));
+                $query->set('orderby', array('min_price_clause' => 'ASC'));
+            }
+        });
+
+        // Calculate and store minimum price before query
+        $posts = get_posts(array(
+            'post_type' => 'product',
+            'posts_per_page' => -1,
+            'fields' => 'ids'
+        ));
+
+        foreach ($posts as $post_id) {
+            $price = get_field('price', $post_id);
+            $sale_price = get_field('sale_price', $post_id);
+            $dealer_discount = $dealer_id ? get_dealer_discount($dealer_id, $post_id) : null;
+
+            // Calculate final price considering all scenarios
+            $final_price = $price;
+            if ($dealer_discount) {
+                $dealer_price = calculate_dealer_price($price, $dealer_discount);
+                if ($sale_price) {
+                    $final_price = min($dealer_price, $sale_price);
+                } else {
+                    $final_price = $dealer_price;
+                }
+            } elseif ($sale_price) {
+                $final_price = $sale_price;
+            }
+
+            update_post_meta($post_id, 'min_price', $final_price);
+        }
+
         $order_by = 'meta_value_num';
-        $meta_key = 'price';
+        $meta_key = 'min_price';
         $order = 'ASC';
         break;
 
     case 'high_price':
+        // Same logic as low_price but with DESC order
+        add_action('pre_get_posts', function ($query) {
+            if ($query->is_main_query()) {
+                $query->set('meta_query', array(
+                    array(
+                        'relation' => 'OR',
+                        array(
+                            'key' => 'price',
+                            'type' => 'NUMERIC'
+                        ),
+                        array(
+                            'key' => 'sale_price',
+                            'type' => 'NUMERIC'
+                        )
+                    ),
+                    'min_price_clause' => array(
+                        'key' => 'min_price',
+                        'compare' => 'EXISTS',
+                        'type' => 'NUMERIC'
+                    )
+                ));
+                $query->set('orderby', array('min_price_clause' => 'DESC'));
+            }
+        });
+
+        // Reuse the same price calculation logic
+        $posts = get_posts(array(
+            'post_type' => 'product',
+            'posts_per_page' => -1,
+            'fields' => 'ids'
+        ));
+
+        foreach ($posts as $post_id) {
+            $price = get_field('price', $post_id);
+            $sale_price = get_field('sale_price', $post_id);
+            $dealer_discount = $dealer_id ? get_dealer_discount($dealer_id, $post_id) : null;
+
+            $final_price = $price;
+            if ($dealer_discount) {
+                $dealer_price = calculate_dealer_price($price, $dealer_discount);
+                if ($sale_price) {
+                    $final_price = min($dealer_price, $sale_price);
+                } else {
+                    $final_price = $dealer_price;
+                }
+            } elseif ($sale_price) {
+                $final_price = $sale_price;
+            }
+
+            update_post_meta($post_id, 'min_price', $final_price);
+        }
+
         $order_by = 'meta_value_num';
-        $meta_key = 'price';
+        $meta_key = 'min_price';
         $order = 'DESC';
         break;
 }
@@ -195,8 +379,10 @@ $meta_query['relation'] = 'AND';
 // Áp dụng meta_query cho các truy vấn
 $args['meta_query'] = $meta_query;
 // Query products
-$product_query = new WP_Query($args);
+$product_query = get_filtered_products($args);
 $args_post = $product_query->posts;
+
+wp_reset_postdata();
 
 // Get price range for all products
 $args_pro = new WP_Query([
@@ -205,8 +391,8 @@ $args_pro = new WP_Query([
     'post_status' => 'publish',
     'meta_query' => [
         [
-            'key'     => 'view_product',
-            'value'   => true,
+            'key' => 'view_product',
+            'value' => true,
             'compare' => '='
         ]
     ]
@@ -261,10 +447,17 @@ $viewed_products = get_viewed_products();
 
 if (!empty($viewed_products)) {
     $args = array(
-        'post_type'      => 'product',
-        'post__in'       => $viewed_products,
+        'post_type' => 'product',
+        'post__in' => $viewed_products,
         'posts_per_page' => -1,
-        'orderby'        => 'post__in', // Sắp xếp theo thứ tự trong cookie
+        'orderby' => 'post__in', // Sắp xếp theo thứ tự trong cookie
+        'meta_query' => array(
+            array(
+                'key' => 'view_product',
+                'value' => true,
+                'compare' => '='
+            ),
+        ),
     );
 
     $viewed_query = new WP_Query($args);
@@ -282,7 +475,7 @@ $url = get_template_directory_uri();
                 <ol class="flex flex-wrap gap-3 items-center" itemscope itemtype="https://schema.org/BreadcrumbList">
 
                     <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
-                        <a href="<?= home_url()  ?>" class="text-secondary hover:text-primary" itemprop="item">
+                        <a href="<?= home_url() ?>" class="text-secondary hover:text-primary" itemprop="item">
                             <span itemprop="name"><?php pll_e('Home') ?></span>
                         </a>
                         <meta itemprop="position" content="1" />
@@ -307,15 +500,15 @@ $url = get_template_directory_uri();
                 <!-- Additional required wrapper -->
                 <div class="swiper-wrapper">
                     <!-- Slides -->
-                    <?php foreach ($slider_page as $value) :
-                    ?>
+                    <?php foreach ($slider_page as $value):
+                        ?>
                         <div class="swiper-slide">
                             <div class="rounded-[1.25rem] overflow-hidden">
                                 <a href="<?php if (!empty($value['link'])) {
-                                                echo $value['link'];
-                                            } else {
-                                                echo "#!";
-                                            } ?>">
+                                    echo $value['link'];
+                                } else {
+                                    echo "#!";
+                                } ?>">
                                     <figure>
                                         <img src="<?= $value['image'] ?>" class="" alt="product-item">
                                     </figure>
@@ -342,21 +535,24 @@ $url = get_template_directory_uri();
     <section class="pt-8">
         <div class="container">
             <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-                <?php foreach ($needs as $key => $value) :
+                <?php foreach ($needs as $key => $value):
                     $icon = get_field('icon_image', $value);
                     $term_id = $value->term_id; // Thay bằng ID của term
                     $taxonomy = $value->taxonomy; // Thay bằng taxonomy của bạn
-
+                
                     $term = get_term($term_id, $taxonomy);
-                ?>
+                    ?>
                     <div data-aos="zoom-in-up" data-aos-duration="1500" class="product-hover  gap-6 p-6  rounded-xl">
-                        <a href="<?= home_url() ?>/product?needs=<?= $value->slug ?>" class="items-center flex  flex-col justify-center">
+                        <a href="<?= home_url() ?>/product?needs=<?= $value->slug ?>"
+                            class="items-center flex  flex-col justify-center">
                             <figure class="w-[4.25rem] h-[4.25rem]">
                                 <img src="<?= $icon ?>" alt="icon">
                             </figure>
-                            <div class="flex flex-col items-center gap-1" onclick="window.location.href='/?filter_name=&needs%5B%5D='<?= $value->slug ?>">
+                            <div class="flex flex-col items-center gap-1"
+                                onclick="window.location.href='/?filter_name=&needs%5B%5D='<?= $value->slug ?>">
                                 <h2 class="text-heading-h6 text-gray-9 text-center"><?= $value->name ?></h2>
-                                <p class="text-body-md-regular text-neutral-500"><?= $term->count ?> <?php pll_e('products') ?></p>
+                                <p class="text-body-md-regular text-neutral-500"><?= $term->count ?>
+                                    <?php pll_e('products') ?></p>
                             </div>
                         </a>
                     </div>
@@ -414,9 +610,12 @@ $url = get_template_directory_uri();
     </style>
     <section class="pt-10 lg:pt-20 pb-5 lg:pb-10">
         <div id="product-container" class="container flex flex-col lg:flex-row gap-6">
-            <form data-aos="fade-right" data-aos-duration="1500" id="product-filter-form" method="GET" action="<?= esc_url($current_url) ?>" class="flex flex-wrap lg:flex-col gap-6 p-6 rounded-xl bg-white w-full lg:max-w-[250px] xl:max-w-[322px] h-fit">
+            <form data-aos="fade-right" data-aos-duration="1500" id="product-filter-form" method="GET"
+                action="<?= esc_url($current_url) ?>"
+                class="flex flex-wrap lg:flex-col gap-6 p-6 rounded-xl bg-white w-full lg:max-w-[250px] xl:max-w-[322px] h-fit">
                 <div class="flex items-center gap-3">
-                    <figure class="w-[2.25rem] h-[2.25rem]"><img src="<?= $url ?>/assets/image/icon/filter.svg" alt="icon">
+                    <figure class="w-[2.25rem] h-[2.25rem]"><img src="<?= $url ?>/assets/image/icon/filter.svg"
+                            alt="icon">
                     </figure>
                     <p class="text-heading-h6 text-gray-8"><?php pll_e('Filter') ?></p>
                 </div>
@@ -443,11 +642,11 @@ $url = get_template_directory_uri();
                                 </div>
                                 <p class="text-body-md-regular text-gray-8"><?php pll_e('All') ?></p>
                             </label>
-                            <?php foreach ($TargetUser as $key => $item) : ?>
+                            <?php foreach ($TargetUser as $key => $item): ?>
                                 <label class="custom-checkbox">
                                     <div class="checkbox-container">
                                         <input type="checkbox" name="target_user[]" value="<?= $item->slug ?>"
-                                            <?= in_array($item->slug, (array)$filter_params['target_user']) ? 'checked' : '' ?>>
+                                            <?= in_array($item->slug, (array) $filter_params['target_user']) ? 'checked' : '' ?>>
                                         <span class="checkmark"></span>
                                     </div>
                                     <p class="text-body-md-regular text-gray-8"><?= $item->name ?></p>
@@ -479,25 +678,29 @@ $url = get_template_directory_uri();
                     </div>
                     <div class="collapse-item">
                         <!-- ranger pick -->
+                        <?php
+                        $min_price = max(0, $min_price); // Đảm bảo $min_price >= 0
+                        ?>
+
                         <div class="range mt-20">
                             <div class="range-slider">
                                 <?php if (isset($_GET['max_price']) && isset($_GET['min_price'])): ?>
-                                    <span class="range-selected" style="right: <?= round((($max_price - $_GET['max_price']) / $max_price) * 100, 2) ?>%;left: <?= round(($_GET['min_price'] / $max_price) * 100, 2) ?>%;"></span>
+                                    <span class="range-selected"
+                                        style="right: <?= round((($max_price - $_GET['max_price']) / $max_price) * 100, 2) ?>%;left: <?= round(($_GET['min_price'] / $max_price) * 100, 2) ?>%;"></span>
                                 <?php else: ?>
-                                    <span class="range-selected" style="left: <?= round(($min_price / $max_price) * 100, 2) ?>%;"></span>
+                                    <span class="range-selected"
+                                        style="left: <?= round(($min_price / $max_price) * 100, 2) ?>%;"></span>
                                 <?php endif ?>
-                                <span class="range-tooltip" id="tooltip-min"><?= isset($filter_params['min_price']) ? esc_attr($filter_params['min_price']) : 0 ?></span>
-                                <span class="range-tooltip" id="tooltip-max"><?= isset($filter_params['max_price']) ? esc_attr($filter_params['max_price']) : $max_price ?></span>
+                                <span class="range-tooltip"
+                                    id="tooltip-min"><?= isset($filter_params['min_price']) ? esc_attr($filter_params['min_price']) : 0 ?></span>
+                                <span class="range-tooltip"
+                                    id="tooltip-max"><?= isset($filter_params['max_price']) ? esc_attr($filter_params['max_price']) : $max_price ?></span>
                             </div>
                             <div class="range-input">
-                                <input type="range" class="min"
-                                    min="0"
-                                    max="<?= $max_price ?>"
+                                <input type="range" class="min" min="0" max="<?= $max_price ?>"
                                     value="<?= isset($filter_params['min_price']) ? esc_attr($filter_params['min_price']) : 0 ?>"
                                     step="1">
-                                <input type="range" class="max"
-                                    min="0"
-                                    max="<?= $max_price ?>"
+                                <input type="range" class="max" min="0" max="<?= $max_price ?>"
                                     value="<?= isset($filter_params['max_price']) ? esc_attr($filter_params['max_price']) : $max_price ?>"
                                     step="1">
                             </div>
@@ -518,8 +721,10 @@ $url = get_template_directory_uri();
                             </div>
                         </div>
 
-                        <p class="text-body-sm-regular text-red-1" style="display: none"><?php pll_e('Please fill in the appropriate price range') ?></p>
-                        <button type="submit" class="w-full button bg-primary text-body-md-semibold text-white apply-filter"><?php pll_e('Apply') ?></button>
+                        <p class="text-body-sm-regular text-red-1" style="display: none">
+                            <?php pll_e('Please fill in the appropriate price range') ?></p>
+                        <button type="submit"
+                            class="w-full button bg-primary text-body-md-semibold text-white apply-filter"><?php pll_e('Apply') ?></button>
                     </div>
                 </div>
                 <hr class="divider">
@@ -542,11 +747,11 @@ $url = get_template_directory_uri();
                                 </div>
                                 <p class="text-body-md-regular text-gray-8"><?php pll_e('All') ?></p>
                             </label>
-                            <?php foreach ($termsCategory as $key => $item) : ?>
+                            <?php foreach ($termsCategory as $key => $item): ?>
                                 <label class="custom-checkbox">
                                     <div class="checkbox-container">
                                         <input type="checkbox" name="brand[]" value="<?= $item->slug ?>"
-                                            <?= in_array($item->slug, (array)$filter_params['brand']) ? 'checked' : '' ?>>
+                                            <?= in_array($item->slug, (array) $filter_params['brand']) ? 'checked' : '' ?>>
                                         <span class="checkmark"></span>
                                     </div>
                                     <p class="text-body-md-regular text-gray-8"><?= $item->name ?></p>
@@ -586,11 +791,11 @@ $url = get_template_directory_uri();
                                 </div>
                                 <p class="text-body-md-regular text-gray-8"><?php pll_e('All') ?></p>
                             </label>
-                            <?php foreach ($needs as $key => $item) : ?>
+                            <?php foreach ($needs as $key => $item): ?>
                                 <label class="custom-checkbox">
                                     <div class="checkbox-container">
                                         <input type="checkbox" name="needs[]" value="<?= $item->slug ?>"
-                                            <?= in_array($item->slug, (array)$filter_params['needs']) ? 'checked' : '' ?>>
+                                            <?= in_array($item->slug, (array) $filter_params['needs']) ? 'checked' : '' ?>>
                                         <span class="checkmark"></span>
                                     </div>
                                     <p class="text-body-md-regular text-gray-8"><?= $item->name ?></p>
@@ -615,123 +820,160 @@ $url = get_template_directory_uri();
                 <div class="flex flex-wrap items-center justify-between gap-6">
                     <h2 class="text-heading-h3-5 text-gray-8"><?php pll_e('Product list') ?></h2>
                     <div class="flex gap-4">
-                        <p class="pt-2.5 text-body-md-medium text-gray-8 whitespace-nowrap"><?php pll_e('Sort by') ?></p>
+                        <p class="pt-2.5 text-body-md-medium text-gray-8 whitespace-nowrap"><?php pll_e('Sort by') ?>
+                        </p>
                         <div class="flex flex-wrap gap-3">
-                            <a href="<?= add_query_arg('sort', 'best_seller', $current_url) ?>" class="text-body-md-medium tab-item <?= $sort_order === 'best_seller' ? 'active' : '' ?>">
+                            <a href="<?= add_query_arg('sort', 'best_seller', $current_url) ?>"
+                                class="text-body-md-medium tab-item <?= $sort_order === 'best_seller' ? 'active' : '' ?>">
                                 <?php pll_e('Best seller') ?>
                             </a>
-                            <a href="<?= add_query_arg('sort', 'low_price', $current_url) ?>" class="text-body-md-medium tab-item <?= $sort_order === 'low_price' ? 'active' : '' ?>">
+                            <a href="<?= add_query_arg('sort', 'low_price', $current_url) ?>"
+                                class="text-body-md-medium tab-item <?= $sort_order === 'low_price' ? 'active' : '' ?>">
                                 <?php pll_e('Low price') ?>
                             </a>
-                            <a href="<?= add_query_arg('sort', 'high_price', $current_url) ?>" class="text-body-md-medium tab-item <?= $sort_order === 'high_price' ? 'active' : '' ?>">
+                            <a href="<?= add_query_arg('sort', 'high_price', $current_url) ?>"
+                                class="text-body-md-medium tab-item <?= $sort_order === 'high_price' ? 'active' : '' ?>">
                                 <?php pll_e('High price') ?>
                             </a>
                         </div>
                     </div>
                 </div>
+                <?php if ($args_post): ?>
+                    <!-- vỉew -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-y-8 gap-x-6 py-8">
+                        <!-- item -->
+                        <?php foreach ($args_post as $key => $value):
+                            $price = get_field('price', $value->ID);
 
-                <!-- vỉew -->
-                <div class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-y-8 gap-x-6 py-8">
-                    <!-- item -->
-                    <?php foreach ($args_post as $key => $value) :
-                        $price = get_field('price', $value->ID);
-
-                        $term_list = get_the_terms($value->ID, 'category_product');
-                        $sale_price = get_field('sale_price', $value->ID);
-                        $des = get_field('short_description', $value->ID);
-                        $instock = get_field('instock', $value->ID);
-                        if (empty($instock)) {
-                            $instock = 0;
-                        }
-
-                        // Get dealer discount if dealer is logged in
-                        $dealer_discount = $dealer_id ? get_dealer_discount($dealer_id, $value->ID) : null;
-
-                        // Calculate final price based on dealer discount
-                        $final_price = $price;
-                        if ($dealer_discount) {
-                            // Calculate dealer discount price from original price
-                            $dealer_price = calculate_dealer_price($price, $dealer_discount);
-                            // If there's a sale price, compare it with dealer price
-                            if ($sale_price) {
-                                $final_price = min($dealer_price, $sale_price);
-                            } else {
-                                $final_price = $dealer_price;
+                            $term_list = get_the_terms($value->ID, 'category_product');
+                            $sale_price = get_field('sale_price', $value->ID);
+                            $des = get_field('short_description', $value->ID);
+                            $instock = get_field('instock', $value->ID);
+                            if (empty($instock)) {
+                                $instock = 0;
                             }
-                        } else {
-                            // If no dealer discount, use sale price if available
-                            $final_price = $sale_price ? $sale_price : $price;
-                        }
-                    ?>
-                        <div class="img-hover bg-white rounded-3xl overflow-hidden">
-                            <div class="image xl:max-h-[232px] overflow-hidden">
-                                <a href="<?= get_permalink($value->ID) ?>">
-                                    <figure class="figure-30-23">
-                                        <img src="<?= checkImage($value->ID) ?>" alt="product">
-                                    </figure>
-                                </a>
-                                <?php if ($instock <= 0) : ?>
-                                    <div class=" absolute top-4 right-4 rounded-[27px] bg-[#C0C0C2] px-3 py-2">
-                                        <span class="text-body-sm-bold text-white">Sold out</span>
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-                            <div class="flex flex-col gap-3 px-6 pb-[20px] mt-4">
-                                <div class="flex flex-col gap-1">
-                                    <?php foreach ($term_list as $keys => $val) :
-                                        if ($val->name === 'SureMeal' || $val->name === 'Supplement Depot') :
-                                    ?>
-                                            <p class="text-body-sm-bold uppercase text-neutral-500"><?= $val->name ?></p>
-                                    <?php
-                                            break; // Thoát khỏi vòng lặp ngay sau khi tìm thấy danh mục
-                                        endif;
-                                    endforeach; ?>
-                                    <a href="<?= get_permalink($value->ID) ?>">
-                                        <h2 class="3xl:min-h-[72px] text-heading-h6 text-gray-9 min-h-2lh truncate-2row">
-                                            <?= $value->post_title ?></h2>
-                                    </a>
 
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <div class="flex items-center gap-1">
-                                        <!-- <?= renderStarRatingByProductId($value->ID) ?> -->
-                                        <figure><img src="<?= $url ?>/assets/image/icon/blue_star.svg" alt="icon"></figure>
-                                        <figure><img src="<?= $url ?>/assets/image/icon/blue_star.svg" alt="icon"></figure>
-                                        <figure><img src="<?= $url ?>/assets/image/icon/blue_star.svg" alt="icon"></figure>
-                                        <figure><img src="<?= $url ?>/assets/image/icon/blue_star.svg" alt="icon"></figure>
-                                        <figure><img src="<?= $url ?>/assets/image/icon/blue_star.svg" alt="icon"></figure>
-                                    </div>
-                                    <p class="text-body-sm-regular text-neutral-500">
-                                        <!-- <?= countReview($value->ID) ?> <?php pll_e('Reviews') ?> -->
-                                        <?= rand(1, 9) ?> <?php pll_e('Reviews') ?>
-                                    </p>
-                                </div>
-                                <p class="min-h-3lh truncate-3row text-body-md-regular text-neutral-500">
-                                    <?= $des ?>
-                                </p>
-                                <div class="flex gap-3 items-center">
-                                    <span class="text-body-sm-regular text-neutral-500"><?php pll_e('From') ?>:</span>
-                                    <?php if ($final_price < $price): ?>
-                                        <div class="flex items-center gap-2">
-                                            <p class="text-body-md-medium text-neutral-500 line-through">
-                                                <?= formatBalance($price) ?>
-                                            </p>
-                                            <p class="text-heading-h7 text-gray-9">
-                                                <?= formatBalance($final_price) ?>
-                                            </p>
-                                        </div>
-                                    <?php else: ?>
-                                        <div class="flex items-center gap-2">
-                                            <p class="text-heading-h7 text-gray-9">
-                                                <?= formatBalance($price) ?>
-                                            </p>
+                            // Get dealer discount if dealer is logged in
+                            $final_price = $price;
+                            $show_original_price = false;
+
+                            if ($authenticated_dealer) {
+                                // If dealer is logged in, use dealer pricing logic
+                                $dealer_discount = get_dealer_discount($dealer_id, $value->ID);
+                                if ($dealer_discount) {
+                                    $dealer_price = calculate_dealer_price($price, $dealer_discount);
+                                    if ($sale_price) {
+                                        $final_price = min($dealer_price, $sale_price);
+                                    } else {
+                                        $final_price = $dealer_price;
+                                    }
+                                    $show_original_price = $final_price < $price;
+                                } else {
+                                    $final_price = $sale_price ? $sale_price : $price;
+                                    $show_original_price = $sale_price && $sale_price < $price;
+                                }
+                            } else {
+                                // Check for affiliate discount if no dealer is logged in
+                                $affiliate_info = get_affiliate_discount($value->ID);
+                                if ($affiliate_info) {
+                                    // Calculate affiliate discounted price
+                                    $affiliate_base_price = floatval($affiliate_info['product_price']);
+                                    $discount_percentage = floatval($affiliate_info['discount_percentage']);
+                                    $affiliate_price = $affiliate_base_price * (1 - ($discount_percentage / 100));
+
+                                    // Compare with sale price if exists
+                                    if ($sale_price) {
+                                        $final_price = min($affiliate_price, $sale_price);
+                                    } else {
+                                        $final_price = $affiliate_price;
+                                    }
+                                    $show_original_price = $final_price < $affiliate_base_price;
+                                    $price = $affiliate_base_price; // Show affiliate base price as original price
+                                } else {
+                                    // No affiliate discount, use regular sale price logic
+                                    $final_price = $sale_price ? $sale_price : $price;
+                                    $show_original_price = $sale_price && $sale_price < $price;
+                                }
+                            }
+                            ?>
+                            <div class="img-hover bg-white rounded-3xl overflow-hidden">
+                                <div class="image xl:max-h-[232px] overflow-hidden">
+                                    <a href="<?= get_permalink($value->ID) ?>">
+                                        <figure class="figure-30-23">
+                                            <img src="<?= checkImage($value->ID) ?>" alt="product">
+                                        </figure>
+                                    </a>
+                                    <?php if ($instock <= 0): ?>
+                                        <div class=" absolute top-4 right-4 rounded-[27px] bg-[#C0C0C2] px-3 py-2">
+                                            <span class="text-body-sm-bold text-white">Sold out</span>
                                         </div>
                                     <?php endif; ?>
                                 </div>
+                                <div class="flex flex-col gap-3 px-6 pb-[20px] mt-4">
+                                    <div class="flex flex-col gap-1">
+                                        <?php foreach ($term_list as $keys => $val):
+                                            if ($val->name === 'SureMeal' || $val->name === 'Supplement Depot'):
+                                                ?>
+                                                <p class="text-body-sm-bold uppercase text-neutral-500"><?= $val->name ?></p>
+                                                <?php
+                                                break; // Thoát khỏi vòng lặp ngay sau khi tìm thấy danh mục
+                                            endif;
+                                        endforeach; ?>
+                                        <a href="<?= get_permalink($value->ID) ?>">
+                                            <h2 class="3xl:min-h-[72px] text-heading-h6 text-gray-9 min-h-2lh truncate-2row">
+                                                <?= $value->post_title ?>
+                                            </h2>
+                                        </a>
+
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <div class="flex items-center gap-1">
+                                            <!-- <?= renderStarRatingByProductId($value->ID) ?> -->
+                                            <figure><img src="<?= $url ?>/assets/image/icon/blue_star.svg" alt="icon"></figure>
+                                            <figure><img src="<?= $url ?>/assets/image/icon/blue_star.svg" alt="icon"></figure>
+                                            <figure><img src="<?= $url ?>/assets/image/icon/blue_star.svg" alt="icon"></figure>
+                                            <figure><img src="<?= $url ?>/assets/image/icon/blue_star.svg" alt="icon"></figure>
+                                            <figure><img src="<?= $url ?>/assets/image/icon/blue_star.svg" alt="icon"></figure>
+                                        </div>
+                                        <p class="text-body-sm-regular text-neutral-500">
+                                            <!-- <?= countReview($value->ID) ?> <?php pll_e('Reviews') ?> -->
+                                            <?= rand(1, 9) ?>
+                                            <?php pll_e('Reviews') ?>
+                                        </p>
+                                    </div>
+                                    <p class="min-h-3lh truncate-3row text-body-md-regular text-neutral-500">
+                                        <?= $des ?>
+                                    </p>
+                                    <div class="flex gap-3 items-center">
+                                        <span class="text-body-sm-regular text-neutral-500"><?php pll_e('From') ?>:</span>
+                                        <?php if ($price): ?>
+                                            <?php if ($show_original_price): ?>
+                                                <div class="flex items-center gap-2">
+                                                    <p class="text-body-md-medium text-neutral-500 line-through">
+                                                        <?= formatBalance($price) ?>
+                                                    </p>
+                                                    <p class="text-heading-h7 text-gray-9">
+                                                        <?= formatBalance($final_price) ?>
+                                                    </p>
+                                                </div>
+                                            <?php else: ?>
+                                                <div class="flex items-center gap-2">
+                                                    <p class="text-heading-h7 text-gray-9">
+                                                        <?= formatBalance($price) ?>
+                                                    </p>
+                                                </div>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            0
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <span class="text-center block">No products found.</span>
+                <?php endif; ?>
 
                 <!-- .pagination -->
                 <div class="pagination">
@@ -741,10 +983,10 @@ $url = get_template_directory_uri();
 
                     // Hiển thị liên kết phân trang
                     echo paginate_links(array(
-                        'base'      => str_replace(999999999, '%#%', esc_url(get_pagenum_link(999999999))),
-                        'format'    => '?paged=%#%',
-                        'current'   => max(1, get_query_var('paged')), // Trang hiện tại
-                        'total'     => $max_pages,
+                        'base' => str_replace(999999999, '%#%', esc_url(get_pagenum_link(999999999))),
+                        'format' => '?paged=%#%',
+                        'current' => max(1, get_query_var('paged')), // Trang hiện tại
+                        'total' => $max_pages,
                         'prev_text' => __(' <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"
                                 fill="none">
                                 <path
@@ -759,15 +1001,16 @@ $url = get_template_directory_uri();
             </div>
         </div>
     </section>
-    <?php if ($count_view > 0) : ?>
+    <?php if ($count_view > 0): ?>
         <section class="pt-5 lg:pt-10 pb-10 lg:pb-20">
             <div class="container flex flex-col gap-6">
-                <div data-aos="fade-down" data-aos-duration="1500" class="flex flex-row gap-6 md:items-center justify-between">
+                <div data-aos="fade-down" data-aos-duration="1500"
+                    class="flex flex-row gap-6 md:items-center justify-between">
                     <div class="flex flex-col gap-2 flex-1">
                         <h2 class="text-heading-h3-5 text-gray-8"><?php pll_e('Recently viewed products') ?>
                         </h2>
                     </div>
-                    <?php if ($count_view > 3) : ?>
+                    <?php if ($count_view > 3): ?>
                         <div class="min-h-16 mt-5 lg:mt-0 flex items-end justify-end gap-3">
                             <button
                                 class="swiper-button-prev product button bg-white w-10 h-10 xl:w-16 xl:h-16 p-0 flex items-center justify-center shadow-button">
@@ -790,7 +1033,7 @@ $url = get_template_directory_uri();
                     <!-- Additional required wrapper -->
                     <div class="swiper-wrapper">
                         <!-- Slides -->
-                        <?php foreach ($post_view as $key => $val) :
+                        <?php foreach ($post_view as $key => $val):
                             $price = get_field('price', $val->ID);
 
                             $term_list = get_the_terms($val->ID, 'category_product');
@@ -800,26 +1043,51 @@ $url = get_template_directory_uri();
                                 $instock = 0;
                             }
                             $sale_price = get_field('sale_price', $val->ID);
-                                
-                            // Get dealer discount if dealer is logged in
-                            $dealer_discount = $dealer_id ? get_dealer_discount($dealer_id, $val->ID) : null;
 
+                
                             // Calculate final price based on dealer discount
                             $final_price = $price;
-                            if ($dealer_discount) {
-                                // Calculate dealer discount price from original price
-                                $dealer_price = calculate_dealer_price($price, $dealer_discount);
-                                // If there's a sale price, compare it with dealer price
-                                if ($sale_price) {
-                                    $final_price = min($dealer_price, $sale_price);
+                            $show_original_price = false;
+
+                            if ($authenticated_dealer) {
+                                // If dealer is logged in, use dealer pricing logic
+                                $dealer_discount = get_dealer_discount($dealer_id, $val->ID);
+                                if ($dealer_discount) {
+                                    $dealer_price = calculate_dealer_price($price, $dealer_discount);
+                                    if ($sale_price) {
+                                        $final_price = min($dealer_price, $sale_price);
+                                    } else {
+                                        $final_price = $dealer_price;
+                                    }
+                                    $show_original_price = $final_price < $price;
                                 } else {
-                                    $final_price = $dealer_price;
+                                    $final_price = $sale_price ? $sale_price : $price;
+                                    $show_original_price = $sale_price && $sale_price < $price;
                                 }
                             } else {
-                                // If no dealer discount, use sale price if available
-                                $final_price = $sale_price ? $sale_price : $price;
+                                // Check for affiliate discount if no dealer is logged in
+                                $affiliate_info = get_affiliate_discount($val->ID);
+                                if ($affiliate_info) {
+                                    // Calculate affiliate discounted price
+                                    $affiliate_base_price = floatval($affiliate_info['product_price']);
+                                    $discount_percentage = floatval($affiliate_info['discount_percentage']);
+                                    $affiliate_price = $affiliate_base_price * (1 - ($discount_percentage / 100));
+
+                                    // Compare with sale price if exists
+                                    if ($sale_price) {
+                                        $final_price = min($affiliate_price, $sale_price);
+                                    } else {
+                                        $final_price = $affiliate_price;
+                                    }
+                                    $show_original_price = $final_price < $affiliate_base_price;
+                                    $price = $affiliate_base_price; // Show affiliate base price as original price
+                                } else {
+                                    // No affiliate discount, use regular sale price logic
+                                    $final_price = $sale_price ? $sale_price : $price;
+                                    $show_original_price = $sale_price && $sale_price < $price;
+                                }
                             }
-                        ?>
+                            ?>
                             <div class="swiper-slide w-full">
                                 <!-- item -->
                                 <div class="img-hover bg-white rounded-3xl overflow-hidden">
@@ -829,7 +1097,7 @@ $url = get_template_directory_uri();
                                                 <img src="<?= checkImage($val->ID) ?>" alt="product">
                                             </figure>
                                         </a>
-                                        <?php if ($instock <= 0) : ?>
+                                        <?php if ($instock <= 0): ?>
                                             <div class=" absolute top-4 right-4 rounded-[27px] bg-[#C0C0C2] px-3 py-2">
                                                 <span class="text-body-sm-bold text-white">Sold out</span>
                                             </div>
@@ -837,11 +1105,11 @@ $url = get_template_directory_uri();
                                     </div>
                                     <div class="flex flex-col gap-3 px-6 pb-[20px] mt-4 md:min-h-[300px] 2xl:min-h-[310px]">
                                         <div class="flex flex-col gap-1 min-h-[100px]">
-                                            <?php foreach ($term_list as $keys => $vals) :
-                                                if ($vals->name === 'SureMeal' || $vals->name === 'Supplement Depot') :
-                                            ?>
+                                            <?php foreach ($term_list as $keys => $vals):
+                                                if ($vals->name === 'SureMeal' || $vals->name === 'Supplement Depot'):
+                                                    ?>
                                                     <p class="text-body-sm-bold uppercase text-neutral-500"><?= $vals->name ?></p>
-                                            <?php
+                                                    <?php
                                                     break; // Thoát khỏi vòng lặp ngay sau khi tìm thấy danh mục
                                                 endif;
                                             endforeach; ?>
@@ -851,15 +1119,21 @@ $url = get_template_directory_uri();
                                         <div class="flex items-center gap-3">
                                             <div class="flex items-center gap-1">
                                                 <!-- <?= renderStarRatingByProductId($val->ID) ?> -->
-                                                <figure><img src="<?= $url ?>/assets/image/icon/blue_star.svg" alt="icon"></figure>
-                                                <figure><img src="<?= $url ?>/assets/image/icon/blue_star.svg" alt="icon"></figure>
-                                                <figure><img src="<?= $url ?>/assets/image/icon/blue_star.svg" alt="icon"></figure>
-                                                <figure><img src="<?= $url ?>/assets/image/icon/blue_star.svg" alt="icon"></figure>
-                                                <figure><img src="<?= $url ?>/assets/image/icon/blue_star.svg" alt="icon"></figure>
+                                                <figure><img src="<?= $url ?>/assets/image/icon/blue_star.svg" alt="icon">
+                                                </figure>
+                                                <figure><img src="<?= $url ?>/assets/image/icon/blue_star.svg" alt="icon">
+                                                </figure>
+                                                <figure><img src="<?= $url ?>/assets/image/icon/blue_star.svg" alt="icon">
+                                                </figure>
+                                                <figure><img src="<?= $url ?>/assets/image/icon/blue_star.svg" alt="icon">
+                                                </figure>
+                                                <figure><img src="<?= $url ?>/assets/image/icon/blue_star.svg" alt="icon">
+                                                </figure>
                                             </div>
                                             <p class="text-body-sm-regular text-neutral-500">
                                                 <!-- <?= countReview($val->ID) ?> <?php pll_e('Reviews') ?> -->
-                                                <?= rand(1, 9) ?> <?php pll_e('Reviews') ?>
+                                                <?= rand(1, 9) ?>
+                                                <?php pll_e('Reviews') ?>
                                             </p>
                                         </div>
                                         <p class="min-h-3lh truncate-3row text-body-md-regular text-neutral-500"><a
@@ -868,21 +1142,25 @@ $url = get_template_directory_uri();
                                         </p>
                                         <div class="flex gap-3 items-center">
                                             <span class="text-body-sm-regular text-neutral-500"><?php pll_e('From') ?></span>
-                                            <?php if ($final_price < $price): ?>
-                                                <div class="flex items-center gap-2">
-                                                    <p class="text-body-md-medium text-neutral-500 line-through">
-                                                        <?= formatBalance($price) ?>
-                                                    </p>
-                                                    <p class="text-heading-h7 text-gray-9">
-                                                        <?= formatBalance($final_price) ?>
-                                                    </p>
-                                                </div>
+                                            <?php if ($price): ?>
+                                                <?php if ($show_original_price): ?>
+                                                    <div class="flex items-center gap-2">
+                                                        <p class="text-body-md-medium text-neutral-500 line-through">
+                                                            <?= formatBalance($price) ?>
+                                                        </p>
+                                                        <p class="text-heading-h7 text-gray-9">
+                                                            <?= formatBalance($final_price) ?>
+                                                        </p>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <div class="flex items-center gap-2">
+                                                        <p class="text-heading-h7 text-gray-9">
+                                                            <?= formatBalance($price) ?>
+                                                        </p>
+                                                    </div>
+                                                <?php endif; ?>
                                             <?php else: ?>
-                                                <div class="flex items-center gap-2">
-                                                    <p class="text-heading-h7 text-gray-9">
-                                                        <?= formatBalance($price) ?>
-                                                    </p>
-                                                </div>
+                                                0
                                             <?php endif; ?>
                                         </div>
                                     </div>
@@ -905,7 +1183,7 @@ $url = get_template_directory_uri();
 <script defer>
     //Search product
 
-    $(document).ready(function() {
+    $(document).ready(function () {
 
     })
 
@@ -990,9 +1268,9 @@ $url = get_template_directory_uri();
     });
 </script>
 <script>
-    $(document).ready(function() {
+    $(document).ready(function () {
         // Khi checkbox "All" được chọn
-        $('.check-all').on('change', function() {
+        $('.check-all').on('change', function () {
             const isChecked = $(this).is(':checked');
             const $parentDiv = $(this).closest('.check-list'); // Tìm container cha
 
@@ -1001,7 +1279,7 @@ $url = get_template_directory_uri();
         });
 
         // Khi checkbox khác được chọn
-        $('.check-list input[type="checkbox"]').not('.check-all').on('change', function() {
+        $('.check-list input[type="checkbox"]').not('.check-all').on('change', function () {
             const $parentDiv = $(this).closest('.check-list'); // Tìm container cha
 
             // Nếu bất kỳ checkbox nào khác "All" được chọn, bỏ chọn "All"
@@ -1058,11 +1336,11 @@ $url = get_template_directory_uri();
     });
 </script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         // Price range filter
         const applyFilterBtn = document.querySelector('.apply-filter');
         if (applyFilterBtn) {
-            applyFilterBtn.addEventListener('click', function(e) {
+            applyFilterBtn.addEventListener('click', function (e) {
                 e.preventDefault();
                 document.getElementById('product-filter-form').submit();
             });
@@ -1071,7 +1349,7 @@ $url = get_template_directory_uri();
         // Name search filter
         const nameSearchInput = document.querySelector('input[name="filter_name"]');
         if (nameSearchInput) {
-            nameSearchInput.addEventListener('keypress', function(e) {
+            nameSearchInput.addEventListener('keypress', function (e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     document.getElementById('product-filter-form').submit();
@@ -1082,7 +1360,7 @@ $url = get_template_directory_uri();
         // Checkbox filters
         const checkboxes = document.querySelectorAll('input[type="checkbox"][name="brand[]"], input[type="checkbox"][name="target_user[]"], input[type="checkbox"][name="needs[]"]');
         checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
+            checkbox.addEventListener('change', function () {
                 document.getElementById('product-filter-form').submit();
             });
         });
@@ -1090,11 +1368,11 @@ $url = get_template_directory_uri();
 </script>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         // Target all checkbox filters
         const checkboxFilters = document.querySelectorAll('input[type="checkbox"]:not(.min, .max)');
         checkboxFilters.forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
+            checkbox.addEventListener('change', function () {
                 // Exclude price inputs from this submission
                 const form = this.closest('form');
                 const priceInputs = form.querySelectorAll('input[name="min_price"], input[name="max_price"]');
@@ -1106,7 +1384,7 @@ $url = get_template_directory_uri();
         // Re-enable price inputs when price apply button is clicked
         const priceApplyButton = document.querySelector('.apply-filter');
         if (priceApplyButton) {
-            priceApplyButton.addEventListener('click', function() {
+            priceApplyButton.addEventListener('click', function () {
                 const form = this.closest('form');
                 const priceInputs = form.querySelectorAll('input[name="min_price"], input[name="max_price"]');
                 priceInputs.forEach(input => input.disabled = false);
@@ -1116,11 +1394,11 @@ $url = get_template_directory_uri();
 </script>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         const checkAllBoxes = document.querySelectorAll('.check-all');
 
         checkAllBoxes.forEach(checkAllBox => {
-            checkAllBox.addEventListener('change', function() {
+            checkAllBox.addEventListener('change', function () {
                 // Find sibling checkboxes
                 const checkboxContainer = this.closest('.check-list');
                 const individualCheckboxes = checkboxContainer.querySelectorAll('input[type="checkbox"]:not(.check-all)');
@@ -1138,7 +1416,7 @@ $url = get_template_directory_uri();
             const individualCheckboxes = checkboxContainer.querySelectorAll('input[type="checkbox"]:not(.check-all)');
 
             individualCheckboxes.forEach(cb => {
-                cb.addEventListener('change', function() {
+                cb.addEventListener('change', function () {
                     if (this.checked) {
                         checkAllBox.checked = false;
                     }
@@ -1148,7 +1426,7 @@ $url = get_template_directory_uri();
     });
 </script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         // Check if there are filter parameters or a search query
         const urlParams = new URLSearchParams(window.location.search);
         const hasFilterParams = Array.from(urlParams.keys()).some(

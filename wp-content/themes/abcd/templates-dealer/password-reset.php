@@ -94,35 +94,67 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $url = get_template_directory_uri();
 get_header();
 ?>
-<div class="relative min-h-screen overflow-hidden bg-gray-50 py-6 sm:py-12 reset-pass text-center px-4">
-    <div class="mx-auto items-center mb-10">
-        <a href="<?= home_url() ?>"><img class="mx-auto" src="<?= $url ?>/assets/dealer/img/logo.png" class="w-64" alt="" /></a>
-    </div>
-    <div class="mx-auto relative p-8 resetpass-radius-20 bg-white w-668-full overflow-hidden border-cm">
-        <h1 class="text-center text-32 font-semibold mt-0 mb-1">Reset Password</h1>
-        <p class="text-center text-base text-will mt-0 mb-10 font-normal">We will send you an email to reset your password.</p>
-        <form method="POST">
-            <div class="mb-10 text-left">
-                <label for="email" class="block mb-1 text-base font-medium text-gray-900 dark:text-white">Email <span class="text-red-500">*</span></label>
-                <input type="email" name="email" id="email" class="box-border bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-3 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white" placeholder="Enter your email" autocomplete="off" required/>
-            </div>
-            <?php if (isset($error_message)): ?>
-                <div class="w-full mb-4 text-justify text-[#FF0000] text-body-sm-regular">
-                    <?php echo $error_message; ?>
+<main class="bg-[#EEF0F6]">
+    <section class="pt-12 pb-20">
+        <div class="container">
+            <div class="flex items-center justify-center gap-4 mb-16">
+                <div class="flex items-center gap-4">
+                    <a href="<?= home_url() ?>">
+                        <figure class="max-w-[128px]">
+                            <img class="" src="<?= $url ?>/assets/image/logo.png" class="" alt="logo" />
+                        </figure>
+                    </a>
+                    <hr class="divider vertical min-h-16" style="background: #030203 ;">
+                    <a href="#">
+                        <p class="text-[26px] font-semibold leading-[123%] text-secondary">
+                            Dealers <br>
+                            Platform
+                        </p>
+                    </a>
                 </div>
-            <?php endif; ?>
+            </div>
+            <div class="w-full max-w-[667px] mx-auto rounded-2xl border border-solid border-neutral-200 bg-white">
+                <div class="p-8 flex flex-col items-center gap-8">
+                    <div class="flex flex-col items-center justify-center gap-1">
+                        <h2 class="text-heading-h4 text-gray-9">
+                            <?php pll_e('Reset password') ?>
+                        </h2>
+                        <p class="text-body-md-regular text-neutral-600"><?php pll_e('We will send you an email to reset your password.') ?></p>
+                    </div>
 
-            <?php if (isset($success_message)): ?>
-                <div class="w-full mb-4 text-justify text-green-600 text-body-sm-regular">
-                    <?php echo $success_message; ?>
+                <div class="flex flex-col items-center gap-6">
+                    <form method="POST" class="w-full">
+                        <div class="flex flex-wrap gap-3">
+                            <label class="input-label">
+                                <p class="input-title"><?php pll_e('Email') ?> <span class="text-primary">*</span></p>
+                                <input type="email" name="email" class="input-field" placeholder="<?php pll_e('Enter your email') ?>" required>
+                            </label>
+                            <?php if (isset($error_message)): ?>
+                                <div class="w-full text-[#FF0000] text-body-sm-regular">
+                                    <?php echo $error_message; ?>
+                                </div>
+                            <?php endif; ?>
+
+                            <?php if (isset($success_message)): ?>
+                                <div class="w-full text-[#16a34a] text-body-sm-regular">
+                                    <?php echo $success_message; ?>
+                                </div>
+                            <?php endif; ?>
+
+                            <div class="w-full flex flex-col md:flex-row items-center gap-3">
+                                <button type="submit" class="w-full md:w-1/2 button bg-primary text-body-md-semibold text-white">
+                                    <?php pll_e('Send email') ?>
+                                </button>
+                                <a href="<?= home_url('/sign-in-dealer') ?>" class="w-full md:w-1/2 button bg-neutral-200 text-body-md-semibold text-gray-8">
+                                    <?php pll_e('Cancel') ?>
+                                </a>
+                            </div>
+                        </div>
+                    </form>
                 </div>
-            <?php endif; ?>
-            <div class="grid md:gap-3 md:grid-cols-2 sm:gap-3 sm:grid-cols-2">
-                <button type="submit" class="text-white bg-red-sure border-none font-medium rounded-lg text-sm w-full px-10 py-4 text-center sm-mb-10">Send email</button>
-                <a href="<?= home_url('/sign-in-dealer') ?>" class="text-gray-900 bg-gray-en border-none font-medium rounded-lg text-sm w-full px-10 py-4 text-center">Cancel</a>
             </div>
-        </form>
-        
-    </div>	
-</div>
+        </div>
+    </div>
+</section>
+</main>
 <?php get_footer() ?>

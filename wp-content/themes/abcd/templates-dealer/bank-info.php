@@ -1,22 +1,22 @@
 <?php /* Template Name: Dealer-Bank-Info */ ?>
 <?php 
-$authenticated_dealer = validate_dealer_token();
-if (!isset($_COOKIE['dealer_token']) || !$authenticated_dealer || $authenticated_dealer->status != 2) {
+$authenticated_user = validate_user_token();
+if (!(isset($_COOKIE['user_token']) && $authenticated_user->type == 2)) {
     wp_redirect(home_url());
     exit;
 }
 
 global $wpdb;
-$table_name = $wpdb->prefix . 'account_dealers';
+$table_name = $wpdb->prefix . 'account_users';
 
 // Lấy thông tin người dùng
-$bank_name = $authenticated_dealer->bank_name;
-$account_number = $authenticated_dealer->account_number;
-$routing_number = $authenticated_dealer->routing_number;
-$holder_name = $authenticated_dealer->holder_name;
-$swift = $authenticated_dealer->swift;
-$iban = $authenticated_dealer->iban;
-$status = $authenticated_dealer->status;
+$bank_name = $authenticated_user->bank_name;
+$account_number = $authenticated_user->account_number;
+$routing_number = $authenticated_user->routing_number;
+$holder_name = $authenticated_user->holder_name;
+$swift = $authenticated_user->swift;
+$iban = $authenticated_user->iban;
+$type = $authenticated_user->type;
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
     $errors = [];
@@ -66,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_profile'])) {
         $result = $wpdb->update(
             $table_name,
             $update_data,
-            ['token' => $_COOKIE['dealer_token']]
+            ['token' => $_COOKIE['user_token']]
         );
 
         if ($result !== false) {
@@ -90,7 +90,7 @@ get_header();
                 <li class="flex items-center pt-4 pb-4 pl-6 item-f my-order">
                 <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/dealer-order-info"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/cart.png" alt=""><img class="mr-3 w-6 active hidden" src="<?= $url ?>/assets/dealer/img/cart_ac.png " alt=""><span class="menu-item">My orders</span></a>
                 </li>
-                <?php if($status == 2): ?>
+                <?php if($type == 2): ?>
                     <li class="flex items-center pt-4 pb-4 pl-6 item-f management">
                     <a class="flex items-center no-underline menu-item" href="<?= home_url() ?>/dealer-affiliate-order"><img class="mr-3 w-6 default" src="<?= $url ?>/assets/dealer/img/tabler_shopping-bag-discount.png" alt=""><img class="mr-3 w-6 active hidden" src="<?= $url ?>/assets/dealer/img/tabler_shopping-bag-discount_ac.png" alt=""><span class="menu-item">Affiliate orders</span></a>
                     </li>
@@ -117,7 +117,7 @@ get_header();
                     <li class="mt-2">
                         <a class="no-underline text-sm" href="<?= home_url() ?>/dealer-business-informmation">Business information</a>
                     </li>
-                    <?php if($status == 2): ?>
+                    <?php if($type == 2): ?>
                         <li class="mt-2">
                             <a class="no-underline text-sm blue-sure" href="<?= home_url() ?>/dealer-bank-informmation">Bank account information</a>
                         </li>

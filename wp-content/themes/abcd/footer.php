@@ -11,6 +11,15 @@ $url = get_template_directory_uri();
 ?>
 
 <footer class="bg-[#161A28]">
+    <style>
+        .wpcf7-not-valid-tip {
+            display: none;
+        }
+
+        .wpcf7-response-output {
+            display: none;
+        }
+    </style>
     <div class="footer pt-16 pb-8 container 3xl:max-w-[1616px]">
         <div class="flex flex-col items-center justify-center xl:items-start xl:justify-start xl:flex-row gap-10 2xl:gap-12 3xl:gap-[100px]">
             <!-- left col logo -->
@@ -70,9 +79,13 @@ $url = get_template_directory_uri();
                 <!-- third row -->
                 <div data-aos="fade-up" data-aos-duration="1500" class="w-full lg:w-[100%] xl:w-[44%] 3xl:max-w-[362px] flex flex-col gap-4">
                     <h2 class="text-body-md-bold text-white"><?php pll_e('Join our Mailing List') ?></h2>
-                    <div class="flex flex-col gap-6 2xl:gap-10">
-                        <?php echo do_shortcode('[contact-form-7 id="e56ceb0" title="Form đăng ký"]'); ?>
-                        <div class="notice">
+                    <div class="form-register flex flex-col gap-6 2xl:gap-10">
+                        <?php if (pll_current_language() == 'en'): ?>
+                            <?php echo do_shortcode('[contact-form-7 id="e56ceb0" title="Form đăng ký"]'); ?>
+                        <?php elseif (pll_current_language() == 'vn'): ?>
+                            <?php echo do_shortcode('[contact-form-7 id="61187f0" title="Form đăng ký(VN)"]'); ?>
+                        <?php endif ?>
+                        <div class="notice text-[#FF0000]">
                             <span class="no"></span>
                         </div>
                         <?php if ($list_payment_method): ?>
@@ -125,87 +138,56 @@ $url = get_template_directory_uri();
 </footer>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const form = document.querySelector('footer form.wpcf7-form');
-        const notice = document.querySelector('.notice');
-        const emailInputs = document.querySelectorAll('#email-newsletter');
+        const form = document.querySelector('.form-register form.wpcf7-form');
+        const notice = document.querySelector('.notice .no');
+        const emailInputs = form.querySelectorAll('.input-footer'); // Change to class selector
         const submitButton = form.querySelector('button[type="submit"]');
-
-        // Hide notice by default
-        notice.style.display = 'none';
+        const currentLang = '<?php echo pll_current_language(); ?>';
+        const messages = {
+            'en': {
+                emailError: 'Please enter a valid email address',
+                submitSuccess: 'Registered to receive information successfully!',
+                loading: 'Sending...',
+                button: 'Register',
+                notice: 'An error occurred. Please try again.'
+            },
+            'vi': {
+                emailError: 'Vui lòng nhập đúng định dạng email',
+                submitSuccess: 'Đăng ký nhận thông tin thành công!',
+                loading: 'Đang gửi...',
+                button: 'Đăng ký',
+                notice: 'Có lỗi xảy ra. Vui lòng thử lại.'
+            }
+        };
 
         if (form) {
-            // Prevent default Contact Form 7 AJAX submission
-            form.addEventListener('wpcf7submit', function(event) {
-                event.preventDefault();
-            });
-
-            form.addEventListener('submit', async function(e) {
-                e.preventDefault();
-
-                // Reset notice
-                notice.innerHTML = '';
-                notice.style.display = 'none'; // Hide notice initially
-
+            // Use Contact Form 7's events instead
+            form.addEventListener('wpcf7beforesubmit', function(e) {
                 let isValid = true;
-
-                // Email validation
                 emailInputs.forEach(input => {
-                    if (!validateEmail(input.value.trim())) {
-                        notice.innerHTML = '<?php pll_e('Please enter a valid email address') ?>';
-                        notice.style.color = 'red';
-                        notice.style.display = 'block'; // Show notice for invalid email
+                    if (!validateEmail(input.value)) {
+                        notice.innerHTML = messages[currentLang].emailError;
                         isValid = false;
+                        e.preventDefault();
                     }
                 });
-
                 if (isValid) {
-                    try {
-                        // Disable submit button and show loading state
-                        submitButton.innerHTML = 'Sending...';
-                        submitButton.disabled = true;
-
-                        // Get the form ID
-                        const formId = form.querySelector('input[name="_wpcf7"]').value;
-
-                        // Create FormData
-                        const formData = new FormData(form);
-
-                        // Send request using Contact Form 7's AJAX
-                        const response = await fetch(
-                            `/wp-json/contact-form-7/v1/contact-forms/${formId}/feedback`, {
-                                method: 'POST',
-                                body: formData
-                            }
-                        );
-                        const result = await response.json();
-
-                        // Handle response
-                        if (result.status === 'mail_sent') {
-                            notice.innerHTML = '<?php pll_e('Registered to receive information successfully!') ?>';
-                            notice.style.color = 'green';
-                            notice.style.display = 'block'; // Show success message
-                            form.reset(); // Clear form fields
-                        } else {
-                            // Display only our custom validation messages
-                            notice.innerHTML = '<?php pll_e('Please enter a valid email address') ?>';
-                            notice.style.color = 'red';
-                            notice.style.display = 'block'; // Show error message
-                        }
-                    } catch (error) {
-                        console.error('Error:', error);
-                        notice.innerHTML = '<?php pll_e('An error occurred. Please try again.') ?>';
-                        notice.style.color = 'red';
-                        notice.style.display = 'block'; // Show error message
-                    } finally {
-                        // Restore submit button
-                        submitButton.innerHTML = 'Subscribe';
-                        submitButton.disabled = false;
-                    }
+                    submitButton.innerHTML = messages[currentLang].loading;
                 }
+            });
+
+            form.addEventListener('wpcf7mailsent', function() {
+                notice.innerHTML = messages[currentLang].submitSuccess;
+                form.reset();
+                submitButton.innerHTML = messages[currentLang].button;
+            });
+
+            form.addEventListener('wpcf7mailfailed', function() {
+                notice.innerHTML = messages[currentLang].notice;
+                submitButton.innerHTML = messages[currentLang].button;
             });
         }
 
-        // Email validation function
         function validateEmail(email) {
             const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             return re.test(String(email).toLowerCase());
@@ -238,19 +220,22 @@ $url = get_template_directory_uri();
 <script src="https://www.google.com/recaptcha/api.js?render=<?= get_field("site_key", "option") ?>"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="<?= $url ?>/assets/js/dev-js.js"></script>
+<!-- script combo -->
+<script defer src="<?= $url ?>/assets/js/combo-select.js"></script>
 <script>
     function buyNow(thiss) {
         // Lấy thông tin sản phẩm từ các thuộc tính
         var id = thiss.attr("data-id"); // ID sản phẩm
         var img = thiss.attr("data-img"); // Hình ảnh sản phẩm
-        var price = parseInt(thiss.attr("data-price")); // Giá sản phẩm
+        var price = parseFloat(thiss.attr("data-price")); // Giá sản phẩm
         var link = thiss.attr("data-link"); // Đường dẫn sản phẩm
         var title = thiss.attr("data-title"); // Tên sản phẩm
-        var qty = 1; // Số lượng mặc định khi thêm mới
+        var qty = parseInt(thiss.attr("data-quantity")); // Số lượng mặc định khi thêm mới
         var weight = thiss.attr("data-weight"); // Trọng lượng sản phẩm
         var instock = parseInt(thiss.attr("data-instock"));
+        var promo = thiss.attr("data-promo"); // Promotion
         var pack = parseInt(thiss.attr("data-pack"));
-
+        console.log(qty);
         // Định nghĩa sản phẩm mới
         var product = {
             id,
@@ -262,6 +247,7 @@ $url = get_template_directory_uri();
             link,
             pack,
             qty,
+            promo,
             select: true // Đặt mặc định là chọn sản phẩm này
         };
         // Kiểm tra tồn kho
@@ -287,7 +273,7 @@ $url = get_template_directory_uri();
                 cart[i].weight = product.weight;
                 cart[i].pack = product.pack;
                 cart[i].instock = product.instock;
-                cart[i].qty = 1; // Đặt lại số lượng thành 1
+                cart[i].qty = qty; // Đặt lại số lượng thành 1
                 cart[i].select = true; // Chỉ chọn sản phẩm này
                 console.log("Đã cập nhật sản phẩm trong giỏ hàng:", cart[i]);
                 break; // Thoát khỏi vòng lặp

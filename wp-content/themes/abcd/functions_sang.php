@@ -34,9 +34,9 @@ function validate_user_token()
 
     // Lay thong tin
     $user = $wpdb->get_row($wpdb->prepare(
-        "SELECT email, first_name, last_name, avatar, addresses, password, provider, ID FROM $table WHERE token = %s",
+        "SELECT email, phone, first_name, last_name, avatar, addresses,phone_number, password, provider, business_name, business_email, business_network, business_website, plan, bank_name, account_number, routing_number, holder_name, swift, iban, type, reason_for_knowing, ID FROM $table WHERE token = %s",
         $user_token
-    ));
+    )); 
 
     return $user ? $user : false;
 }
@@ -54,7 +54,7 @@ function validate_dealer_token()
 
     // Lay thong tin
     $dealer = $wpdb->get_row($wpdb->prepare(
-        "SELECT email, phone, first_name, last_name, avatar, addresses, password, provider, business_name, business_email, business_network, business_website, plan, bank_name, account_number, routing_number, holder_name, swift, iban, status, ID FROM $table WHERE token = %s",
+        "SELECT email, phone, first_name, last_name, avatar, addresses, password, provider, business_name, business_email, business_network, business_website, plan, bank_name, account_number, routing_number, holder_name, swift, iban, status, reason_for_knowing, ID FROM $table WHERE token = %s",
         $dealer_token
     )); 
 
@@ -84,7 +84,9 @@ function logout_user()
         );
 
         // Xóa cookie
-        setcookie('user_token', '', time() - 3600, '/', '', false, true);
+        // setcookie('user_token', '', time() - 3600, '/', '', false, true);
+        
+        setcookie('user_token', '', time() - 3600, '/', '.' . $_SERVER['HTTP_HOST']);
     }
 
     if ($authenticated_dealer) {
@@ -100,7 +102,8 @@ function logout_user()
         );
 
         // Xóa cookie
-        setcookie('dealer_token', '', time() - 3600, '/', '', false, true);
+        // setcookie('dealer_token', '', time() - 3600, '/', '', false, true);
+        setcookie('dealer_token', '', time() - 3600, '/', '.' . $_SERVER['HTTP_HOST']);
     }
 
     // Chuyển hướng về trang chủ
@@ -108,14 +111,10 @@ function logout_user()
     exit;
 }
 
-// add_action('wp_enqueue_scripts', 'enqueue_google_signin_script');
-
-// Xử lý đăng nhập Google chung
+// Xử lý đăng nhập Google
 function google_signin_handler() {
     if (isset($_GET['code'])) {
-        // Xác định loại đăng nhập từ URL hiện tại
-        $current_url = $_SERVER['REQUEST_URI'];
-        $is_dealer = strpos($current_url, 'sign-in-dealer') !== false;
+        $is_dealer = (isset($_GET['state']) && $_GET['state'] === 'dealer');
         
         $client_id = '451202130918-qkndmpg1jorcqhugj630pnr0u7sueblb.apps.googleusercontent.com';
         $client_secret = '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';
@@ -176,7 +175,10 @@ function google_signin_handler() {
             // Xử lý cho dealer
             $dealer_id = save_google_account($first_name, $last_name, $email, $avatar, $provider, $provider_id, $access_token, 'dealers');
             
-            if ($dealer_id) {
+            if ($dealer_id === 'disabled') {
+                wp_redirect(home_url('/sign-in-dealer?error=account_disabled'));
+                exit;
+            } else if ($dealer_id) {
                 echo '<script>localStorage.removeItem("cart");</script>';
                 echo '<html><head><meta http-equiv="refresh" content="0;url=' . home_url() . '"></head></html>';
                 exit;
@@ -212,6 +214,12 @@ function save_google_account($first_name, $last_name, $email, $avatar, $provider
     // Check if account exists
     $existing = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE email = %s", $email));
 
+    // Check status for dealers
+    if ($account_type === 'dealers' && $existing && isset($existing->status) && $existing->status == 0) {
+        echo '<script>alert("Account pending approval"); window.location.href="' . home_url('/sign-in-dealer') . '";</script>';
+        exit;
+    }
+
     if ($existing) {
         // Update existing account
         $update_data = array(
@@ -244,19 +252,21 @@ function save_google_account($first_name, $last_name, $email, $avatar, $provider
 
         $wpdb->insert($table_name, $insert_data);
         $account_id = $wpdb->insert_id;
+        if($account_type === 'dealers'){
+            echo '<script>alert("You have successfully registered as a dealer. Your registration request is pending approval by SureMeal."); window.location.href="' . home_url('/sign-in-dealer') . '";</script>';
+            exit;
+        }
     }
 
     if ($account_id) {
         // Set authentication cookie
         $expire = time() + (30 * 24 * 60 * 60); // 30 days
-        setcookie($token_cookie_name, $token, [
-            'expires' => $expire,
-            'path' => '/',
-            'domain' => '',
-            'secure' => false,
-            'httponly' => true,
-//            'samesite' => 'None'
-        ]);
+        setcookie($token_cookie_name, $token, $expire, '/', '.' . $_SERVER['HTTP_HOST']);
+        if($account_type === 'dealers'){
+            setcookie('user_token', '', time() - 3600, '/', '.' . $_SERVER['HTTP_HOST']);
+        }elseif($account_type === 'users'){
+            setcookie('dealer_token', '', time() - 3600, '/', '.' . $_SERVER['HTTP_HOST']);
+        }
         
         return $account_id;
     }
@@ -345,14 +355,8 @@ function handle_facebook_login()
     // Set user token cookie
     if ($result !== false) {
         $expire = time() + (30 * 24 * 60 * 60); // 30 days
-        setcookie('user_token', $user_data_update['token'], [
-            'expires' => $expire,
-            'path' => '/',
-            'domain' => '',
-            'secure' => false,
-            'httponly' => true,
-//            'samesite' => 'Strict'
-        ]);
+        setcookie('user_token', $user_data_update['token'], $expire, '/', '.' . $_SERVER['HTTP_HOST']);
+        setcookie('dealer_token', '', time() - 3600, '/', '.' . $_SERVER['HTTP_HOST']);
 
         wp_send_json_success(['redirect' => home_url()]);
     } else {
@@ -364,53 +368,57 @@ function handle_facebook_login()
 add_action('wp_ajax_facebook_login', 'handle_facebook_login');
 add_action('wp_ajax_nopriv_facebook_login', 'handle_facebook_login');
 
-function handle_facebook_login_dealer()
-{
+function handle_facebook_login_dealer() {
     // Verify NONCE and check if it's a Facebook login action
     check_ajax_referer('facebook_login_dealer_nonce', 'nonce');
-
+    
     // Get Facebook user data from POST
     $facebook_id = sanitize_text_field($_POST['facebook_id']);
     $name = sanitize_text_field($_POST['first_name']);
     $email = !empty($_POST['email']) ? sanitize_email($_POST['email']) : null;
     $avatar = esc_url($_POST['avatar']);
     $access_token = sanitize_text_field($_POST['access_token']);
-
+    
     // Prepare data to be saved
     global $wpdb;
     $table = $wpdb->prefix . 'account_dealers';
-
+    
     // Check if user already exists
     $existing_user = $wpdb->get_row($wpdb->prepare(
         "SELECT * FROM $table WHERE provider = 'facebook' AND provider_id = %s",
         $facebook_id
     ));
-
+    
     // Prepare user data update array
     $user_data_update = [];
-
+    
     // Only update first_name if it's empty in the existing record
     if ($existing_user && empty($existing_user->first_name)) {
         $user_data_update['first_name'] = $name;
     }
-
+    
     // Only update avatar if it's empty in the existing record
     if ($existing_user && empty($existing_user->avatar)) {
         $user_data_update['avatar'] = $avatar;
     }
-
+    
     // Always update provider token and generate a new token
     $user_data_update['provider_token'] = $access_token;
     $user_data_update['token'] = generate_unique_token();
-
+    
     if ($existing_user) {
-        // Update existing user only if there are changes
+        // Check status for existing user
+        if ($existing_user->status == 0) {
+            echo '<script>alert("Account pending approval"); window.location.href="' . home_url('/sign-in-dealer') . '";</script>';
+            exit;
+        }
+        
+        // Update existing user only if there are changes and status is 1
         if (!empty($user_data_update)) {
             $result = $wpdb->update(
                 $table,
                 $user_data_update,
                 ['id' => $existing_user->id],
-                // Use appropriate format based on updated fields
                 array_fill(0, count($user_data_update), '%s'),
                 ['%d']
             );
@@ -420,46 +428,46 @@ function handle_facebook_login_dealer()
             $user_data_update['token'] = $existing_user->token;
         }
     } else {
-        // Insert new user with available data
+        // Insert new user with available data and status = 0
         $user_data_update['provider'] = 'facebook';
         $user_data_update['provider_id'] = $facebook_id;
         $user_data_update['first_name'] = $name;
         $user_data_update['avatar'] = $avatar;
-
+        $user_data_update['status'] = 0;  // Set initial status to pending
+        
         // Only add email if it exists
         if ($email) {
             $user_data_update['email'] = $email;
         }
-
+        
         $result = $wpdb->insert(
             $table,
             $user_data_update,
-            // Dynamically set format based on which fields are present
             array_map(function () {
                 return '%s';
             }, $user_data_update)
         );
+        
+        if ($result !== false) {
+            echo '<script>alert("You have successfully registered as a dealer. Your registration request is pending approval by SureMeal."); window.location.href="' . home_url('/sign-in-dealer') . '";</script>';
+            exit;
+        }
     }
-
-    // Set user token cookie
-    if ($result !== false) {
+    
+    // Set user token cookie only if status is 1 and operation was successful
+    if ($result !== false && ($existing_user && $existing_user->status == 1)) {
         $expire = time() + (30 * 24 * 60 * 60); // 30 days
-        setcookie('dealer_token', $user_data_update['token'], [
-            'expires' => $expire,
-            'path' => '/',
-            'domain' => '',
-            'secure' => false,
-            'httponly' => true,
-//            'samesite' => 'Strict'
-        ]);
-
+        setcookie('dealer_token', $user_data_update['token'], $expire, '/', '.' . $_SERVER['HTTP_HOST']);
+        setcookie('user_token', '', time() - 3600, '/', '.' . $_SERVER['HTTP_HOST']);
+        
         wp_send_json_success(['redirect' => home_url()]);
-    } else {
+    } else if ($result === false) {
         wp_send_json_error(['message' => 'Failed to save user data']);
     }
-
+    
     wp_die();
 }
+
 add_action('wp_ajax_facebook_login_dealer', 'handle_facebook_login_dealer');
 add_action('wp_ajax_nopriv_facebook_login_dealer', 'handle_facebook_login_dealer');
 
@@ -1188,252 +1196,290 @@ function handle_save_dealer_discount() {
     die();
 }
 
+// Xuất file csv
+add_action('admin_init', 'handle_csv_export');
+function handle_csv_export() {
+    if (!isset($_POST['export_csv'])) return;
+
+    // Thiết lập header và BOM
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="users_export_' . date('Y-m-d') . '.csv"');
+    echo "\xEF\xBB\xBF"; // UTF-8 BOM
+
+    // Lấy dữ liệu từ database
+    global $wpdb;
+    $wpdb->set_charset('utf8mb4'); // Đảm bảo charset
+    
+    $myrows = $wpdb->get_results("SELECT * FROM wp_account_users");
+
+    // Ghi CSV
+    $output = fopen('php://output', 'w');
+    fputcsv($output, ['ID', 'Tên', 'Họ', 'Email', 'Provider']);
+
+    foreach ($myrows as $customer) {
+        fputcsv($output, [
+            $customer->id,
+            $customer->first_name,
+            $customer->last_name,
+            $customer->email,
+            $customer->provider
+        ]);
+    }
+
+    fclose($output);
+    exit();
+}
+
 // // Dịch
-// add_action('init', function () {
-//     pll_register_string('theme', 'Category');
-//     pll_register_string('theme', 'All');
-//     pll_register_string('theme', 'Log out');
-//     pll_register_string('theme', 'Search');
-//     pll_register_string('theme', 'Sort by');
-//     pll_register_string('theme', 'Latest');
-//     pll_register_string('theme', 'Most popular');
-//     pll_register_string('theme', 'Read more');
-//     pll_register_string('theme', 'Home');
-//     pll_register_string('theme', 'NEW');
-//     pll_register_string('theme', 'Back to cart');
-//     pll_register_string('theme', 'Product list');
-//     pll_register_string('theme', 'Blog list');
-//     pll_register_string('theme', 'Search result');
-//     pll_register_string('theme', 'Quantity');
-//     pll_register_string('theme', 'Type');
-//     pll_register_string('theme', 'Pack');
-//     pll_register_string('theme', 'Delivery information');
-//     pll_register_string('theme', 'Enter delivery information');
-//     pll_register_string('theme', 'Enter other delivery information');
-//     pll_register_string('theme', 'Select payment method');
-//     pll_register_string('theme', 'Add a credit or debit');
-//     pll_register_string('theme', 'Select or enter an offer');
-//     pll_register_string('theme', 'Discount code');
-//     pll_register_string('theme', 'Enter your discount code here');
-//     pll_register_string('theme', 'Apply code');
-//     pll_register_string('theme', 'Promotion');
-//     pll_register_string('theme', 'Order information');
-//     pll_register_string('theme', 'Sub total');
-//     pll_register_string('theme', 'Total');
-//     pll_register_string('theme', 'Total payment');
-//     pll_register_string('theme', 'Shipping fee');
-//     pll_register_string('theme', 'Discount');
-//     pll_register_string('theme', `By proceeding with your purchase, you agree to SureMeal's`);
-//     pll_register_string('theme', 'Terms of Service');
-//     pll_register_string('theme', 'and');
-//     pll_register_string('theme', 'Personal Data Processing Policy.');
-//     pll_register_string('theme', 'Check out');
-//     pll_register_string('theme', 'Create account');
-//     pll_register_string('theme', 'First name');
-//     pll_register_string('theme', 'Last name');
-//     pll_register_string('theme', 'Enter your first name');
-//     pll_register_string('theme', 'Enter your last name');
-//     pll_register_string('theme', 'First name cannot be empty');
-//     pll_register_string('theme', 'Last name cannot be empty');
-//     pll_register_string('theme', 'Email');
-//     pll_register_string('theme', 'Invalid email');
-//     pll_register_string('theme', 'Enter your email');
-//     pll_register_string('theme', 'Password');
-//     pll_register_string('theme', 'Enter your password');
-//     pll_register_string('theme', 'Password must have at least 6 characters');
-//     pll_register_string('theme', 'New Password');
-//     pll_register_string('theme', 'Please re-enter your password');
-//     pll_register_string('theme', 'Passwords do not match');
-//     pll_register_string('theme', 'Email already exists. Please use a different email.');
-//     pll_register_string('theme', 'An error occurred while registering. Please try again.');
-//     pll_register_string('theme', 'Enter your new password');
-//     pll_register_string('theme', 'Confirm Password');
-//     pll_register_string('theme', 'Confirm your new password');
-//     pll_register_string('theme', 'Re-enter password');
-//     pll_register_string('theme', 'Enter your password again');
-//     pll_register_string('theme', `By creating an account, you agree to SureMeal's`);
-//     pll_register_string('theme', 'Conditions of Use');
-//     pll_register_string('theme', 'Enter your email');
-//     pll_register_string('theme', 'Privacy Notice');
-//     pll_register_string('theme', 'Sign up');
-//     pll_register_string('theme', 'Sign in');
-//     pll_register_string('theme', 'For Sale Partners');
-//     pll_register_string('theme', 'For Dealer');
-//     pll_register_string('theme', 'Sign in');
-//     pll_register_string('theme', 'Loading...');
-//     pll_register_string('theme', 'Already have an account?');
-//     pll_register_string('theme', 'Or connect with:');
-//     pll_register_string('theme', 'Continue with Google');
-//     pll_register_string('theme', 'Continue with Facebook');
-//     pll_register_string('theme', 'Continue with Apple');
-//     pll_register_string('theme', 'Login cancelled. Please try again.');
-//     pll_register_string('theme', 'Forgot password?');
-//     pll_register_string('theme', 'Keep me sign in');
-//     pll_register_string('theme', 'Check this box only when on a private device.');
-//     pll_register_string('theme', 'New to SureMeal?');
-//     pll_register_string('theme', 'We will send you an email to reset your password.');
-//     pll_register_string('theme', 'Send email');
-//     pll_register_string('theme', 'Cancel');
-//     pll_register_string('theme', 'A valid password reset link has already been sent to your email.');
-//     pll_register_string('theme', 'Failed to send reset email.');
-//     pll_register_string('theme', 'Failed to generate a reset token. Please try again.');
-//     pll_register_string('theme', 'No user found with this email address');
-//     pll_register_string('theme', 'Please enter a valid email address');
-//     pll_register_string('theme', 'Please enter a valid phone number');
-//     pll_register_string('theme', 'Create New Password');
-//     pll_register_string('theme', 'Reset Password');
-//     pll_register_string('theme', 'Password successfully reset. Please log in with your new password.');
-//     pll_register_string('theme', 'Password reset link sent to your email.');
-//     pll_register_string('theme', 'FAQs');
-//     pll_register_string('theme', 'No results found');
-//     pll_register_string('theme', 'General');
-//     pll_register_string('theme', 'Health');
-//     pll_register_string('theme', 'Search by keywords');
-//     pll_register_string('theme', 'Any question?');
-//     pll_register_string('theme', 'Our support agents are ready with the answer.');
-//     pll_register_string('theme', 'Cart');
-//     pll_register_string('theme', 'Search everything');
-//     pll_register_string('theme', 'You have not selected the checkbox yet!');
-//     pll_register_string('theme', 'There are no products left in the cart, please select a product to purchase');
-//     pll_register_string('theme', 'Select all');
-//     pll_register_string('theme', 'On sale now');
-//     pll_register_string('theme', 'Exclusive promotion');
-//     pll_register_string('theme', 'Ending in:');
-//     pll_register_string('theme', 'Tomorrow');
-//     pll_register_string('theme', 'From');
-//     pll_register_string('theme', 'Buy Now');
-//     pll_register_string('theme', 'Promotional products');
-//     pll_register_string('theme', 'Reviews');
-//     pll_register_string('theme', 'Contact Us');
-//     pll_register_string('theme', 'Private Label');
-//     pll_register_string('theme', 'Personal');
-//     pll_register_string('theme', 'Order details');
-//     pll_register_string('theme', 'Order code');
-//     pll_register_string('theme', 'Copied the text');
-//     pll_register_string('theme', 'Deliver');
-//     pll_register_string('theme', 'products');
-//     pll_register_string('theme', 'Receipt');
-//     pll_register_string('theme', 'Processing');
-//     pll_register_string('theme', 'Canceled');
-//     pll_register_string('theme', 'In progress');
-//     pll_register_string('theme', 'Completed');
-//     pll_register_string('theme', 'Order Placed');
-//     pll_register_string('theme', 'Packaging');
-//     pll_register_string('theme', 'On The Road');
-//     pll_register_string('theme', 'Recipient information');
-//     pll_register_string('theme', 'Payment method');
-//     pll_register_string('theme', 'Delivered');
-//     pll_register_string('theme', 'Delivered');
-//     pll_register_string('theme', 'Address');
-//     pll_register_string('theme', 'Phone');
-//     pll_register_string('theme', 'Payment information');
-//     pll_register_string('theme', 'My orders');
-//     pll_register_string('theme', 'Order infomation');
-//     pll_register_string('theme', 'Search by order code');
-//     pll_register_string('theme', 'View other products');
-//     pll_register_string('theme', 'Products');
-//     pll_register_string('theme', 'Views details');
-//     pll_register_string('theme', 'Sort by');
-//     pll_register_string('theme', 'Best seller');
-//     pll_register_string('theme', 'Low price');
-//     pll_register_string('theme', 'High price');
-//     pll_register_string('theme', 'Filter');
-//     pll_register_string('theme', 'Target user');
-//     pll_register_string('theme', 'Search by name');
-//     pll_register_string('theme', 'View more');
-//     pll_register_string('theme', 'View less');
-//     pll_register_string('theme', 'View more products');
-//     pll_register_string('theme', 'View less products');
-//     pll_register_string('theme', 'Price');
-//     pll_register_string('theme', 'Brand');
-//     pll_register_string('theme', 'Needs');
-//     pll_register_string('theme', 'Personal information');
-//     pll_register_string('theme', 'Full name');
-//     pll_register_string('theme', 'Change information');
-//     pll_register_string('theme', 'Add new address');
-//     pll_register_string('theme', 'Shop now');
-//     pll_register_string('theme', 'Customer Support');
-//     pll_register_string('theme', 'Services');
-//     pll_register_string('theme', 'Join our Mailing List');
-//     pll_register_string('theme', 'Your email');
-//     pll_register_string('theme', 'Subcribe');
-//     pll_register_string('theme', 'Find us on Google Maps');
-//     pll_register_string('theme', 'Find a Dealer');
-//     pll_register_string('theme', 'Data is being updated');
-//     pll_register_string('theme', 'Dealer near your location');
-//     pll_register_string('theme', 'Search dealer name, zip code, or address');
-//     pll_register_string('theme', 'Step');
-//     pll_register_string('theme', 'Processing');
-//     pll_register_string('theme', 'Or');
-//     pll_register_string('theme', 'Showing all dealerships');
-//     pll_register_string('theme', 'View more detail');
-//     pll_register_string('theme', 'Could not find your location');
-//     pll_register_string('theme', 'You denied location access. Please enable permissions in your browser settings.');
-//     pll_register_string('theme', 'Open');
-//     pll_register_string('theme', 'Open at');
-//     pll_register_string('theme', 'Close');
-//     pll_register_string('theme', 'Closes at');
-//     pll_register_string('theme', 'See direction');
-//     pll_register_string('theme', 'Phone number');
-//     pll_register_string('theme', 'Name');
-//     pll_register_string('theme', 'Country/Region');
-//     pll_register_string('theme', 'City');
-//     pll_register_string('theme', 'State');
-//     pll_register_string('theme', 'ZIP Code');
-//     pll_register_string('theme', 'Your name');
-//     pll_register_string('theme', 'Street address');
-//     pll_register_string('theme', 'optianal');
-//     pll_register_string('theme', 'Enter your city');
-//     pll_register_string('theme', 'Choose State');
-//     pll_register_string('theme', 'No provinces found.');
-//     pll_register_string('theme', 'Unable to fetch provinces. Please try again later.');
-//     pll_register_string('theme', 'Please select a product before proceeding to checkout!');
-//     pll_register_string('theme', 'Voucher cannot be applied because there are no products selected!');
-//     pll_register_string('theme', 'Please wait...');
-//     pll_register_string('theme', 'An error occurred. Please try again.');
-//     pll_register_string('theme', 'Free of charge');
-//     pll_register_string('theme', 'Cart data is invalid or empty.');
-//     pll_register_string('theme', 'Country not supported for shipping!');
-//     pll_register_string('theme', 'Please enter an order code.');
-//     pll_register_string('theme', 'Please enter your full name');
-//     pll_register_string('theme', 'Please enter your phone number');
-//     pll_register_string('theme', 'Please enter your country');
-//     pll_register_string('theme', 'Please enter your email');
-//     pll_register_string('theme', 'Invalid email address');
-//     pll_register_string('theme', 'Please enter your city');
-//     pll_register_string('theme', 'Please enter your postal code');
-//     pll_register_string('theme', 'Please enter your province');
-//     pll_register_string('theme', 'Please enter your state or province');
-//     pll_register_string('theme', 'Please enter your address');
-//     pll_register_string('theme', 'Cart data is invalid or empty.');
-//     pll_register_string('theme', 'Form not found.');
-//     pll_register_string('theme', 'Please enter your address');
-//     pll_register_string('theme', 'Postal code');
-//     pll_register_string('theme', 'Enter your Postal code');
-//     pll_register_string('theme', 'Enter your ZIP Code');
-//     pll_register_string('theme', 'Save this information for next time');
-//     pll_register_string('theme', 'No orders found.');
-//     pll_register_string('theme', 'Recently viewed products');
-//     pll_register_string('theme', 'Please fill in the appropriate price range');
-//     pll_register_string('theme', 'Please confirm new password');
-//     pll_register_string('theme', 'Current password is required');
-//     pll_register_string('theme', 'Current password is incorrect');
-//     pll_register_string('theme', 'File is too large. Maxium size is 5MB.');
-//     pll_register_string('theme', 'Invalid file type. Only JPG, PNG and GIF are allowed.');
-//     pll_register_string('theme', 'This email is already in use');
-//     pll_register_string('theme', 'Are you sure?');
-//     pll_register_string('theme', 'You will be logged out!');
-//     pll_register_string('theme', 'This email is already in use');
-//     pll_register_string('theme', 'Yes, log me out!');
-//     pll_register_string('theme', 'Could not find your location');
-//     pll_register_string('theme', 'Cancel');
-//     pll_register_string('theme', 'You denied location access. Please enable permissions in your browser settings.');
-//     pll_register_string('theme', 'Location information is unavailable.');
-//     pll_register_string('theme', 'The request to get user location timed out.');
-//     pll_register_string('theme', 'Locating your position...');
-//     pll_register_string('theme', 'Geolocation is not supported by your browser');
-//     pll_register_string('theme', 'Showing');
-//     pll_register_string('theme', 'dealers near you');
-//     pll_register_string('theme', 'Registered to receive information successfully!');
-//     pll_register_string('theme', 'About Us');
-// });
+add_action('init', function () {
+    pll_register_string('theme', 'Category');
+    pll_register_string('theme', 'All');
+    pll_register_string('theme', 'Log out');
+    pll_register_string('theme', 'Search');
+    pll_register_string('theme', 'Sort by');
+    pll_register_string('theme', 'Latest');
+    pll_register_string('theme', 'Most popular');
+    pll_register_string('theme', 'Read more');
+    pll_register_string('theme', 'Home');
+    pll_register_string('theme', 'NEW');
+    pll_register_string('theme', 'Back to cart');
+    pll_register_string('theme', 'Product list');
+    pll_register_string('theme', 'Blog list');
+    pll_register_string('theme', 'Search result');
+    pll_register_string('theme', 'Quantity');
+    pll_register_string('theme', 'Type');
+    pll_register_string('theme', 'Pack');
+    pll_register_string('theme', 'Delivery information');
+    pll_register_string('theme', 'Enter delivery information');
+    pll_register_string('theme', 'Enter other delivery information');
+    pll_register_string('theme', 'Select payment method');
+    pll_register_string('theme', 'Add a credit or debit');
+    pll_register_string('theme', 'Select or enter an offer');
+    pll_register_string('theme', 'Discount code');
+    pll_register_string('theme', 'Enter your discount code here');
+    pll_register_string('theme', 'Apply code');
+    pll_register_string('theme', 'Promotion');
+    pll_register_string('theme', 'Order information');
+    pll_register_string('theme', 'Sub total');
+    pll_register_string('theme', 'Total');
+    pll_register_string('theme', 'Total payment');
+    pll_register_string('theme', 'Shipping fee');
+    pll_register_string('theme', 'Discount');
+    pll_register_string('theme', `By proceeding with your purchase, you agree to SureMeal's`);
+    pll_register_string('theme', 'Terms of Service');
+    pll_register_string('theme', 'and');
+    pll_register_string('theme', 'Personal Data Processing Policy.');
+    pll_register_string('theme', 'Check out');
+    pll_register_string('theme', 'Create account');
+    pll_register_string('theme', 'First name');
+    pll_register_string('theme', 'Last name');
+    pll_register_string('theme', 'Enter your first name');
+    pll_register_string('theme', 'Enter your last name');
+    pll_register_string('theme', 'First name cannot be empty');
+    pll_register_string('theme', 'Last name cannot be empty');
+    pll_register_string('theme', 'Email');
+    pll_register_string('theme', 'Invalid email');
+    pll_register_string('theme', 'Enter your email');
+    pll_register_string('theme', 'Password');
+    pll_register_string('theme', 'Enter your password');
+    pll_register_string('theme', 'Password must have at least 6 characters');
+    pll_register_string('theme', 'New Password');
+    pll_register_string('theme', 'Please re-enter your password');
+    pll_register_string('theme', 'Passwords do not match');
+    pll_register_string('theme', 'Email already exists. Please use a different email.');
+    pll_register_string('theme', 'An error occurred while registering. Please try again.');
+    pll_register_string('theme', 'Enter your new password');
+    pll_register_string('theme', 'Confirm Password');
+    pll_register_string('theme', 'Confirm your new password');
+    pll_register_string('theme', 'Re-enter password');
+    pll_register_string('theme', 'Enter your password again');
+    pll_register_string('theme', `By creating an account, you agree to SureMeal's`);
+    pll_register_string('theme', 'Conditions of Use');
+    pll_register_string('theme', 'Enter your email');
+    pll_register_string('theme', 'Privacy Notice');
+    pll_register_string('theme', 'Sign up');
+    pll_register_string('theme', 'Sign in');
+    pll_register_string('theme', 'For Sale Partners');
+    pll_register_string('theme', 'For Dealer');
+    pll_register_string('theme', 'Sign in');
+    pll_register_string('theme', 'Loading...');
+    pll_register_string('theme', 'Already have an account?');
+    pll_register_string('theme', 'Or connect with:');
+    pll_register_string('theme', 'Continue with Google');
+    pll_register_string('theme', 'Continue with Facebook');
+    pll_register_string('theme', 'Continue with Apple');
+    pll_register_string('theme', 'Login cancelled. Please try again.');
+    pll_register_string('theme', 'Forgot password?');
+    pll_register_string('theme', 'Keep me sign in');
+    pll_register_string('theme', 'Check this box only when on a private device.');
+    pll_register_string('theme', 'New to SureMeal?');
+    pll_register_string('theme', 'We will send you an email to reset your password.');
+    pll_register_string('theme', 'Send email');
+    pll_register_string('theme', 'Cancel');
+    pll_register_string('theme', 'A valid password reset link has already been sent to your email.');
+    pll_register_string('theme', 'Failed to send reset email.');
+    pll_register_string('theme', 'Failed to generate a reset token. Please try again.');
+    pll_register_string('theme', 'No user found with this email address');
+    pll_register_string('theme', 'Please enter a valid email address');
+    pll_register_string('theme', 'Please enter a valid phone number');
+    pll_register_string('theme', 'Create New Password');
+    pll_register_string('theme', 'Reset Password');
+    pll_register_string('theme', 'Password successfully reset. Please log in with your new password.');
+    pll_register_string('theme', 'Password reset link sent to your email.');
+    pll_register_string('theme', 'FAQs');
+    pll_register_string('theme', 'No results found');
+    pll_register_string('theme', 'General');
+    pll_register_string('theme', 'Health');
+    pll_register_string('theme', 'Search by keywords');
+    pll_register_string('theme', 'Any question?');
+    pll_register_string('theme', 'Our support agents are ready with the answer.');
+    pll_register_string('theme', 'Cart');
+    pll_register_string('theme', 'Search everything');
+    pll_register_string('theme', 'You have not selected the checkbox yet!');
+    pll_register_string('theme', 'There are no products left in the cart, please select a product to purchase');
+    pll_register_string('theme', 'Select all');
+    pll_register_string('theme', 'On sale now');
+    pll_register_string('theme', 'Exclusive promotion');
+    pll_register_string('theme', 'Ending in:');
+    pll_register_string('theme', 'Tomorrow');
+    pll_register_string('theme', 'From');
+    pll_register_string('theme', 'Buy Now');
+    pll_register_string('theme', 'Promotional products');
+    pll_register_string('theme', 'Reviews');
+    pll_register_string('theme', 'Contact Us');
+    pll_register_string('theme', 'Contact information');
+    pll_register_string('theme', 'Business information');
+    pll_register_string('theme', 'Private Label');
+    pll_register_string('theme', 'Personal');
+    pll_register_string('theme', 'Order details');
+    pll_register_string('theme', 'Order code');
+    pll_register_string('theme', 'Copied the text');
+    pll_register_string('theme', 'Deliver');
+    pll_register_string('theme', 'products');
+    pll_register_string('theme', 'Receipt');
+    pll_register_string('theme', 'Processing');
+    pll_register_string('theme', 'Canceled');
+    pll_register_string('theme', 'In progress');
+    pll_register_string('theme', 'Completed');
+    pll_register_string('theme', 'Order Placed');
+    pll_register_string('theme', 'Packaging');
+    pll_register_string('theme', 'On The Road');
+    pll_register_string('theme', 'Recipient information');
+    pll_register_string('theme', 'Payment method');
+    pll_register_string('theme', 'Delivered');
+    pll_register_string('theme', 'Delivered');
+    pll_register_string('theme', 'Address');
+    pll_register_string('theme', 'Phone');
+    pll_register_string('theme', 'Payment information');
+    pll_register_string('theme', 'My orders');
+    pll_register_string('theme', 'Order infomation');
+    pll_register_string('theme', 'Search by order code');
+    pll_register_string('theme', 'View other products');
+    pll_register_string('theme', 'Products');
+    pll_register_string('theme', 'Views details');
+    pll_register_string('theme', 'Sort by');
+    pll_register_string('theme', 'Best seller');
+    pll_register_string('theme', 'Low price');
+    pll_register_string('theme', 'High price');
+    pll_register_string('theme', 'Filter');
+    pll_register_string('theme', 'Target user');
+    pll_register_string('theme', 'Search by name');
+    pll_register_string('theme', 'View more');
+    pll_register_string('theme', 'View less');
+    pll_register_string('theme', 'View more products');
+    pll_register_string('theme', 'View less products');
+    pll_register_string('theme', 'Price');
+    pll_register_string('theme', 'Brand');
+    pll_register_string('theme', 'Needs');
+    pll_register_string('theme', 'Personal information');
+    pll_register_string('theme', 'Full name');
+    pll_register_string('theme', 'Change information');
+    pll_register_string('theme', 'Add new address');
+    pll_register_string('theme', 'Shop now');
+    pll_register_string('theme', 'Customer Support');
+    pll_register_string('theme', 'Services');
+    pll_register_string('theme', 'Join our Mailing List');
+    pll_register_string('theme', 'Your email');
+    pll_register_string('theme', 'Subcribe');
+    pll_register_string('theme', 'Find us on Google Maps');
+    pll_register_string('theme', 'Find a Dealer');
+    pll_register_string('theme', 'Data is being updated');
+    pll_register_string('theme', 'Dealer near your location');
+    pll_register_string('theme', 'Search dealer name, zip code, or address');
+    pll_register_string('theme', 'Step');
+    pll_register_string('theme', 'Processing');
+    pll_register_string('theme', 'Or');
+    pll_register_string('theme', 'Showing all dealerships');
+    pll_register_string('theme', 'View more detail');
+    pll_register_string('theme', 'Could not find your location');
+    pll_register_string('theme', 'You denied location access. Please enable permissions in your browser settings.');
+    pll_register_string('theme', 'Open');
+    pll_register_string('theme', 'Open at');
+    pll_register_string('theme', 'Close');
+    pll_register_string('theme', 'Closes at');
+    pll_register_string('theme', 'See direction');
+    pll_register_string('theme', 'Phone number');
+    pll_register_string('theme', 'Name');
+    pll_register_string('theme', 'Country/Region');
+    pll_register_string('theme', 'City');
+    pll_register_string('theme', 'State');
+    pll_register_string('theme', 'ZIP Code');
+    pll_register_string('theme', 'Your name');
+    pll_register_string('theme', 'Street address');
+    pll_register_string('theme', 'optianal');
+    pll_register_string('theme', 'Enter your city');
+    pll_register_string('theme', 'Choose State');
+    pll_register_string('theme', 'No provinces found.');
+    pll_register_string('theme', 'Unable to fetch provinces. Please try again later.');
+    pll_register_string('theme', 'Please select a product before proceeding to checkout!');
+    pll_register_string('theme', 'Voucher cannot be applied because there are no products selected!');
+    pll_register_string('theme', 'Please wait...');
+    pll_register_string('theme', 'An error occurred. Please try again.');
+    pll_register_string('theme', 'Free of charge');
+    pll_register_string('theme', 'Cart data is invalid or empty.');
+    pll_register_string('theme', 'Country not supported for shipping!');
+    pll_register_string('theme', 'Please enter an order code.');
+    pll_register_string('theme', 'Please enter your full name');
+    pll_register_string('theme', 'Please enter your phone number');
+    pll_register_string('theme', 'Please enter your country');
+    pll_register_string('theme', 'Please enter your email');
+    pll_register_string('theme', 'Invalid email address');
+    pll_register_string('theme', 'Please enter your city');
+    pll_register_string('theme', 'Please enter your postal code');
+    pll_register_string('theme', 'Please enter your province');
+    pll_register_string('theme', 'Please enter your state or province');
+    pll_register_string('theme', 'Please enter your address');
+    pll_register_string('theme', 'Cart data is invalid or empty.');
+    pll_register_string('theme', 'Form not found.');
+    pll_register_string('theme', 'Please enter your address');
+    pll_register_string('theme', 'Postal code');
+    pll_register_string('theme', 'Enter your Postal code');
+    pll_register_string('theme', 'Enter your ZIP Code');
+    pll_register_string('theme', 'Save this information for next time');
+    pll_register_string('theme', 'No orders found.');
+    pll_register_string('theme', 'Recently viewed products');
+    pll_register_string('theme', 'Please fill in the appropriate price range');
+    pll_register_string('theme', 'Please fill in all password fields');
+    pll_register_string('theme', 'Please confirm new password');
+    pll_register_string('theme', 'Current password is required');
+    pll_register_string('theme', 'Current password is incorrect');
+    pll_register_string('theme', 'File is too large. Maxium size is 5MB.');
+    pll_register_string('theme', 'Invalid file type. Only JPG, PNG and GIF are allowed.');
+    pll_register_string('theme', 'This email is already in use');
+    pll_register_string('theme', 'Are you sure?');
+    pll_register_string('theme', 'You will be logged out!');
+    pll_register_string('theme', 'This email is already in use');
+    pll_register_string('theme', 'Yes, log me out!');
+    pll_register_string('theme', 'Could not find your location');
+    pll_register_string('theme', 'Cancel');
+    pll_register_string('theme', 'You denied location access. Please enable permissions in your browser settings.');
+    pll_register_string('theme', 'Location information is unavailable.');
+    pll_register_string('theme', 'The request to get user location timed out.');
+    pll_register_string('theme', 'Locating your position...');
+    pll_register_string('theme', 'Geolocation is not supported by your browser');
+    pll_register_string('theme', 'Showing');
+    pll_register_string('theme', 'dealers near you');
+    pll_register_string('theme', 'Registered to receive information successfully!');
+    pll_register_string('theme', 'About Us');
+    pll_register_string('theme', 'Send message');
+});

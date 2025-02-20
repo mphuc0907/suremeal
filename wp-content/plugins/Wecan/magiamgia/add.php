@@ -30,6 +30,17 @@ $arg_product = array(
 );
 $query_product = new WP_Query($arg_product);
 $products = $query_product->posts;
+
+$list_user = $wpdb->get_results("
+    SELECT * 
+    FROM wp_account_users 
+    ORDER BY id DESC 
+");
+$list_voucher = $wpdb->get_results("
+    SELECT * 
+    FROM wp_voucher
+    ORDER BY id DESC 
+");
 ?>
 <style>
     input {
@@ -605,7 +616,54 @@ $products = $query_product->posts;
                                         </div>
                                     </td>
                                 </tr>
-
+                                <!-- <tr>
+                                    <td>
+                                        Apply to users
+                                    </td>
+                                    <td>
+                                        <select name="apply_user[]" id="apply_user" multiple>
+                                            <option value="all" selected>All</option> 
+                                            <?php foreach($list_user as $user): ?>
+                                                <option value="<?= $user->id ?>"><?= $user->first_name ?> <?= $user->last_name ?></option>
+                                            <?php endforeach ?>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        Apply to shipping
+                                    </td>
+                                    <td>
+                                        <select name="apply_ship" id="apply_ship">
+                                            <option value="null">Not applicable</option>
+                                            <option value="0">All</option>
+                                            <option value="1">United States</option>
+                                            <option value="2">Canada</option>
+                                            <option value="3">Vietnam</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        Stack
+                                    </td>
+                                    <td>
+                                        <select name="apply_stack[]" id="apply_stack" multiple>
+                                            <option value="null" selected>Not applicable</option>
+                                            <?php foreach($list_voucher as $voucher): ?>
+                                                <option value="<?= $voucher->id ?>"><?= $voucher->voucher_name ?></option>
+                                            <?php endforeach ?>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr> -->
+                                    <td>
+                                        Reuse
+                                    </td>
+                                    <td>
+                                        <input type="checkbox" name="reuse" id="reuse" value="1">
+                                    </td>
+                                </tr>
                             </table>
                         </div>
 
@@ -685,8 +743,53 @@ add_admin_js('jquery.validate.min.js');
             }
         );
     });
-
 </script>
+<!-- <script>
+$('#apply_user').on('change', function() {
+    const $select = $(this);
+    const selectedValues = $select.val() || [];
+    
+    // Nếu có chọn "all" và có các option khác
+    if (selectedValues.includes('all') && selectedValues.length > 1) {
+        // Bỏ chọn tất cả option trừ "all"
+        $select.find('option').not('[value="all"]').prop('selected', false);
+    }
+    
+    // Nếu đang chọn các option khác (không phải "all")
+    if (!selectedValues.includes('all') && selectedValues.length > 0) {
+        // Bỏ chọn option "all"
+        $select.find('option[value="all"]').prop('selected', false);
+    }
+    
+    // Nếu chọn "all" khi chưa có option nào
+    if (selectedValues.includes('all') && selectedValues.length === 1) {
+        // Bỏ chọn tất cả option khác (nếu có)
+        $select.find('option').not('[value="all"]').prop('selected', false);
+    }
+});
+$('#apply_stack').on('change', function() {
+    const $select = $(this);
+    const selectedValues = $select.val() || [];
+    
+    // Nếu có chọn "null" và có các option khác
+    if (selectedValues.includes('null') && selectedValues.length > 1) {
+        // Bỏ chọn tất cả option trừ "null"
+        $select.find('option').not('[value="null"]').prop('selected', false);
+    }
+    
+    // Nếu đang chọn các option khác (không phải "null")
+    if (!selectedValues.includes('null') && selectedValues.length > 0) {
+        // Bỏ chọn option "null"
+        $select.find('option[value="null"]').prop('selected', false);
+    }
+    
+    // Nếu chọn "null" khi chưa có option nào
+    if (selectedValues.includes('null') && selectedValues.length === 1) {
+        // Bỏ chọn tất cả option khác (nếu có)
+        $select.find('option').not('[value="null"]').prop('selected', false);
+    }
+});
+</script> -->
 <script>
     $(document).ready(function () {
         var keyword = '';
@@ -883,6 +986,35 @@ add_admin_js('jquery.validate.min.js');
             });
             // End validate input -----
 
+            var time_start = $("#time_start").val();
+            var time_end = $("#time_end").val();
+            
+            if (!time_start) {
+                check = 2;
+                $("#time_start").addClass("border-error");
+                if (!$("#time_start-error").length) {
+                    $("#time_start").after('<label id="time_start-error" class="error">Start time cannot be empty</label>');
+                } else {
+                    $("#time_start-error").removeClass("d-none");
+                }
+            } else {
+                $("#time_start").removeClass("border-error");
+                $("#time_start-error").addClass("d-none");
+            }
+            
+            if (!time_end) {
+                check = 2;
+                $("#time_end").addClass("border-error");
+                if (!$("#time_end-error").length) {
+                    $("#time_end").after('<label id="time_end-error" class="error">End time cannot be empty</label>');
+                } else {
+                    $("#time_end-error").removeClass("d-none");
+                }
+            } else {
+                $("#time_end").removeClass("border-error");
+                $("#time_end-error").addClass("d-none");
+            }
+
             var loai_giam_gia = $('#loai_giam_gia').find(":selected").val(); // 1: Giảm giá theo số tiền, 2: Giảm giá theo phần trăm
             var muc_giam_2 = $("#muc_giam_2").val();
             // Hiện thị thông báo cho giảm giá theo phần trăm và có giới hạn
@@ -949,6 +1081,11 @@ add_admin_js('jquery.validate.min.js');
                 var producdIdChoose = $("#producdIdChoose").val();
                 var special_member = $('#specialMember').prop('checked');
                 var type = $('#apply-filter-type').val();
+
+                // var apply_user = $("#apply_user").val();
+                // var apply_ship = $("#apply_ship").val();
+                // var apply_stack = $("#apply_stack").val();
+                var reuse = $("#reuse").is(":checked") ? $("#reuse").val() : 0;
                 $.ajax({
                     url: urlAjax,
                     type: 'POST',
@@ -969,6 +1106,10 @@ add_admin_js('jquery.validate.min.js');
                         statusmucgiamtoida: statusmucgiamtoida,
                         loai_giam_gia,
                         type,
+                        // apply_user,
+                        // apply_ship,
+                        // apply_stack,
+                        reuse,
                         // dataChange,
                         // special_member,
                         action: 'add_voucher',

@@ -72,15 +72,26 @@ function backToTop() {
     return {  
         show: true,  
         handleScroll() {  
-            this.show = (window.scrollY > 200); // Hiện nút khi scroll xuống hơn 200px  
+            this.show = (window.scrollY > 200);
         },  
         scrollToTop() {  
-            window.scrollTo({ top: 0, behavior: 'smooth' }); // Cuộn về đầu trang  
+            window.scrollTo({ top: 0, behavior: 'smooth' }); 
         },  
         init() {  
             window.addEventListener('scroll', () => this.handleScroll());  
-            // Gọi hàm xử lý cuộn một lần để xác định trạng thái ban đầu của nút  
             this.handleScroll();  
         }  
     }  
 }  
+
+$(document).ready(function(){
+    $(".open-menu").click(function(){
+        $("body").addClass("overflow-hidden");
+        $(".menu").addClass("memushow");
+    });
+
+    $(".close-menu").click(function(){
+        $("body").removeClass("overflow-hidden");
+        $(".menu").removeClass("memushow");
+    });
+});

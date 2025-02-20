@@ -544,8 +544,6 @@ function submitOrder() {
 }
 
 
-
-
 //function calculateCartTotal($eligible_products) {
 //    // Giả sử bạn có hàm này để tính tổng giá trị các sản phẩm đủ điều kiện trong giỏ hàng
 //    $total = 0;
@@ -576,9 +574,6 @@ function submitOrder() {
 //
 //    return $product ? $product->price : 0;
 //}
-
-
-
 
 
 function addVoucher()
@@ -823,7 +818,7 @@ function getStatusPayment($status)
     $trang_thai = [
         1 => 'Processing',
         2 => 'Completed',
-        3 => 'In progress',
+       
         4 => 'Canceled',
     ];
 
@@ -837,7 +832,24 @@ function getStatusPayment($status)
     }
     return $text;
 }
+function getStatus($status)
+{
+    $trang_thai = [
+        1 => 'Processing',
+        2 => 'Connection',
+        3 => 'Canceled',
+    ];
 
+    $text = '';
+    for ($i = 1; $i <= count($trang_thai); $i++) {
+        if ($status == $i) {
+            $text .= "<option selected value='" . $i . "'>" . $trang_thai[$i] . "</option>";
+        } else {
+            $text .= "<option value='" . $i . "'>" . $trang_thai[$i] . "</option>";
+        }
+    }
+    return $text;
+}
 function getStatusDealed($status)
 {
     $trang_thai = [
@@ -987,13 +999,9 @@ function changeUserStatus()
     }
     $status = no_sql_injection(xss($_POST['status']));
     $orderId = no_sql_injection(xss($_POST['UserId']));
-    if ($status < 1 || $status > 2) {
-        $rs['status'] = error_code;
-        $rs['mess'] = messerror . " Lỗi Validate";
-        returnajax($rs);
-    }
-    $getOrder = $wpdb->get_row("SELECT * FROM wp_account_dealers WHERE id = {$orderId}");
-    $order_code = $getOrder->id;
+    
+    $getOrder = $wpdb->get_row("SELECT * FROM wp_account_users WHERE id = {$orderId}");
+    
     if (empty($getOrder)) {
         $rs['status'] = error_code;
         $rs['mess'] = "No user found. Please check and try again.";
@@ -1001,7 +1009,7 @@ function changeUserStatus()
     }
 
     $wpdb->update(
-        'wp_account_dealers',
+        'wp_account_users',
         array('status' => $status),
         array('id' => $orderId)
     );
@@ -1537,5 +1545,387 @@ function remover_select() {
 }
 add_action('wp_ajax_remover_select', 'remover_select');
 add_action('wp_ajax_nopriv_remover_select', 'remover_select');
+
+function sendmailOTP($otp_code, $email){
+    $headers[] = "Content-type:text/html;charset=utf-8" . "\r\n";
+    $body = get_field('mail_otp', 'option');
+    $body = str_replace('__otp__', $otp_code, $body);
+    wp_mail($email, 'Suremeal - OTP confirm', $body, $headers);
+}
+
+function handle_resend_otp() {
+    if (!isset($_POST['email'])) {
+        wp_send_json_error(['message' => 'Email is required']);
+    }
+
+    $email = sanitize_email(base64_decode($_POST['email']));
+    
+    global $wpdb;
+    $user = $wpdb->get_row($wpdb->prepare(
+        "SELECT *, TIMESTAMPDIFF(DAY, created_at, NOW()) as days_diff 
+         FROM wp_pending_users 
+         WHERE email = %s",
+        $email
+    ));
+
+    if (!$user) {
+        wp_send_json_error(['message' => 'User not found']);
+    }
+
+    $current_time = current_time('mysql');
+
+    // Nếu đã qua 1 ngày kể từ created_at, reset lại các trường
+    if ($user->days_diff >= 1) {
+        $wpdb->update(
+            'wp_pending_users',
+            array(
+                'resend_count' => 0,
+                'last_resend_date' => $current_time,
+                'created_at' => $current_time
+            ),
+            array('email' => $email)
+        );
+        
+        // Lấy lại thông tin user sau khi reset
+        $user = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM wp_pending_users WHERE email = %s",
+            $email
+        ));
+    }
+
+    // Kiểm tra thời gian resend cuối cùng
+    if ($user->last_resend_date) {
+        $last_resend = strtotime($user->last_resend_date);
+        $current_timestamp = time();
+        
+        if (($current_timestamp - $last_resend) < 120) { // 2 phút
+            wp_send_json_error(['message' => 'Please wait 2 minutes before requesting another OTP']);
+        }
+    }
+
+    // Kiểm tra số lần resend
+    if ($user->resend_count >= 3) {
+        $time_until_reset = strtotime($user->created_at . ' +1 day') - time();
+        $hours = floor($time_until_reset / 3600);
+        $minutes = floor(($time_until_reset % 3600) / 60);
+        
+        wp_send_json_error([
+            'message' => sprintf(
+                'Maximum resend attempts reached. Please try again after %d hours and %d minutes',
+                $hours,
+                $minutes
+            )
+        ]);
+    }
+
+    // Tạo OTP mới
+    $new_otp = sprintf("%06d", mt_rand(0, 999999));
+    $otp_expired_at = date('Y-m-d H:i:s', strtotime($current_time . ' +2 minutes'));
+
+    // Cập nhật thông tin trong database
+    $wpdb->update(
+        'wp_pending_users',
+        array(
+            'otp' => $new_otp,
+            'otp_expired_at' => $otp_expired_at,
+            'resend_count' => $user->resend_count + 1,
+            'last_resend_date' => $current_time
+        ),
+        array('email' => $email)
+    );
+
+    // Gửi mail OTP mới
+    sendmailOTP($new_otp, $email);
+    
+    wp_send_json_success(['message' => 'OTP has been resent']);
+} 
+add_action('wp_ajax_resend_otp', 'handle_resend_otp');
+add_action('wp_ajax_nopriv_resend_otp', 'handle_resend_otp');
+
+add_action('wp_ajax_save_product_sale_partner', 'save_product_sale_partner');
+add_action('wp_ajax_nopriv_save_product_sale_partner', 'save_product_sale_partner');
+
+function save_product_sale_partner() {
+    global $wpdb;
+    $product = $_POST['selectedProducts'];
+    $id_user = $_POST['id_user'];
+    $json = json_encode($product, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+   
+    $data = array(
+        'product_infomation' => $json,
+
+    );
+    $where = array('id_user' => $id_user);
+
+    if ($wpdb->update('wp_affiliate', $data, $where)) {
+        $rs['status'] = 1;
+        $rs['message'] = 'Affiliate updated successfully';
+        returnajax($rs);
+    } else {
+        $rs['status'] = 0;
+        $rs['message'] = 'Affiliate update failed!';
+        returnajax($rs);
+    }
+}
+add_action('wp_ajax_submit_shortlink', 'submit_shortlink');
+add_action('wp_ajax_nopriv_submit_shortlink', 'submit_shortlink');
+
+function submit_shortlink() {
+    global $wpdb;
+
+    $authenticated_user = validate_user_token();
+    $id_user = $authenticated_user->ID;
+
+    $distribution_code = sanitize_text_field($_POST['distribution_code']);
+    $shortened_code = sanitize_text_field($_POST['shortened_code']);
+    $domain = sanitize_text_field($_POST['domain']);
+
+    $status = 1;
+    $percent = 5;
+    $total_click = 0;
+    $created_at = current_time('mysql');
+    $default_discount_level = get_field('default_discount_level', 'option');
+    $data = [
+        'id_user' => $id_user,
+        'shortlink' => $shortened_code,
+        'distribution_code' => $distribution_code,
+        'status' => $status,
+        'domain' => $domain,
+        'percent' => $percent,
+        'discount' => $default_discount_level,
+        'total_click' => $total_click,
+        'created_at' => $created_at,
+    ];
+
+    // Sử dụng $wpdb->prefix để tránh lỗi tiền tố
+    $table_name = 'wp_affiliate';
+
+    // Chèn dữ liệu vào bảng
+    $inserted = $wpdb->insert($table_name, $data);
+
+    // Kiểm tra lỗi
+    if (!$inserted) {
+        echo 'Error: ' . $wpdb->last_error . '<br>';
+        echo 'Last Query: ' . $wpdb->last_query . '<br>';
+        die();
+    }
+
+    $rs = [
+        'status' => 1,
+        'mess' => 'Create successful affiliate link.'
+    ];
+
+    wp_send_json($rs);
+}
+add_action('wp_ajax_submitOrderPoint', 'submitOrderPoint');
+add_action('wp_ajax_nopriv_submitOrderPoint', 'submitOrderPoint');
+
+function submitOrderPoint() {
+    global $wpdb;
+    $authenticated_user = validate_user_token();
+    $idPoint = isset($_POST['idPoint']) ? intval($_POST['idPoint']) : 0;
+    $point = isset($_POST['point']) ? intval($_POST['point']) : 0;
+    $id_user = $authenticated_user->ID;
+
+    if ($point <= 0 || $idPoint <= 0) {
+        $rs['status'] = 0;
+        $rs['message'] = 'Invalid point or product ID.';
+        returnajax($rs);
+    }
+
+    // Check product_points and validate type
+    $product_points = $wpdb->get_row($wpdb->prepare(
+        "SELECT * FROM product_points WHERE id = %d",
+        $idPoint
+    ));
+
+    if (!$product_points) {
+        $rs['status'] = 0;
+        $rs['message'] = 'Invalid product.';
+        returnajax($rs);
+    }
+
+    // Check if it's a voucher type (type = 1)
+    if ($product_points->type == 1) {
+        // Get voucher information
+        $voucher = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM wp_voucher WHERE id = %d",
+            $product_points->id_value
+        ));
+
+        if (!$voucher) {
+            $rs['status'] = 0;
+            $rs['message'] = 'Invalid voucher.';
+            returnajax($rs);
+        }
+
+        // Check if user already has this voucher
+        $user_ids = [];
+        if (!empty($voucher->id_user)) {
+            // Parse JSON and ensure all values are integers
+            $decoded_ids = json_decode($voucher->id_user, true);
+            $user_ids = array_map('intval', $decoded_ids);
+        }
+
+        if (in_array($id_user, $user_ids)) {
+            $rs['status'] = 0;
+            $rs['message'] = 'You already own this voucher.';
+            returnajax($rs);
+        }
+    }
+
+    // Get user's valid points
+    $current_time = time();
+    $curron_aff = $wpdb->get_results($wpdb->prepare(
+        "SELECT * FROM points WHERE id_user = %d AND transaction_type = 1 AND date_end > %d ORDER BY date_end ASC",
+        $id_user,
+        $current_time
+    ));
+
+    if (empty($curron_aff)) {
+        $rs['status'] = 0;
+        $rs['message'] = 'No available points.';
+        returnajax($rs);
+    }
+
+    // Calculate total available points
+    $total_points = 0;
+    foreach ($curron_aff as $record) {
+        $total_points += $record->remaining_points;
+    }
+
+    if ($point > $total_points) {
+        $rs['status'] = 0;
+        $rs['message'] = 'You do not have enough points to redeem this product.';
+        returnajax($rs);
+    }
+
+    // Deduct points using FIFO
+    $remaining_point = $point;
+    foreach ($curron_aff as $record) {
+        if ($remaining_point <= 0) break;
+        $available_points = $record->remaining_points;
+        $usedPoints = min($remaining_point, $available_points);
+        
+        $update_result = $wpdb->update(
+            'points',
+            [
+                'used_points' => $record->used_points + $usedPoints,
+                'remaining_points' => $available_points - $usedPoints,
+            ],
+            ['id' => $record->id],
+            ['%d', '%d'],
+            ['%d']
+        );
+
+        if ($update_result === false) {
+            $rs['status'] = 0;
+            $rs['message'] = 'Error updating points.';
+            returnajax($rs);
+        }
+        
+        $remaining_point -= $usedPoints;
+    }
+
+    // Handle voucher type product
+    if ($product_points->type == 1) {
+        // Update voucher user list ensuring integer values
+        $user_ids = [];
+        if (!empty($voucher->id_user)) {
+            $decoded_ids = json_decode($voucher->id_user, true);
+            $user_ids = array_map('intval', $decoded_ids);
+        }
+        $user_ids[] = (int)$id_user;  // Ensure new ID is added as integer
+        
+        $update_voucher = $wpdb->update(
+            'wp_voucher',
+            [
+                'id_user' => json_encode($user_ids, JSON_NUMERIC_CHECK), 
+            ],
+            ['id' => $product_points->id_value]
+        );
+
+        if ($update_voucher === false) {
+            $rs['status'] = 0;
+            $rs['message'] = 'Error updating voucher.';
+            returnajax($rs);
+        }
+    }
+
+    // Record the transaction
+    $timestamp = time();
+    $data_distribution = [
+        'id_user' => $id_user,
+        'point' => $product_points->point,
+        'image' => 'http://platform.suremealdev.wecan-group.info/wp-content/themes/abcd/dist/img/image-coin.png',
+        'title' => 'Points expiration',
+        'note' => 'You used points to redeem ' . ($product_points->type == 1 ? 'voucher' : 'offer'),
+        'date_create' => $timestamp,
+        'date_end' => $timestamp,
+        'used_points' => $product_points->point,
+        'remaining_points' => 0,
+        'order_id' => '0',
+        'transaction_type' => 0,
+        'type_product' => $product_points->type == 1 ? 2 : 1
+    ];
+
+    $inserted_aff = $wpdb->insert('points', $data_distribution);
+
+    // Update product purchases count
+    $update_product = $wpdb->update(
+        'product_points',
+        [
+            'purchases' => (int)$product_points->purchases - 1,
+        ],
+        ['id' => $product_points->id]
+    );
+
+    if ($inserted_aff) {
+        $rs['status'] = 1;
+        $rs['message'] = 'Successfully redeemed ' . ($product_points->type == 1 ? 'voucher' : 'offer') . '.';
+    } else {
+        $rs['status'] = 0;
+        $rs['message'] = 'Redemption failed!';
+    }
+
+    returnajax($rs);
+}
+add_action('wp_ajax_nopriv_AddDomain', 'AddDomain');
+add_action('wp_ajax_AddDomain', 'AddDomain');
+function AddDomain(){
+
+    $authenticated_user = validate_user_token();
+    $id_user = $authenticated_user->ID;
+    $first_name = $authenticated_user->first_name;
+    $last_name = $authenticated_user->last_name;
+    $fullName = $first_name .' '. $last_name;
+    $domain = $_POST['domain'];
+
+    global $wpdb;
+    $time = time();
+    $data = [
+        'id_user' => $id_user, // Lấy ID user hiện tại
+        'domain' => $domain,
+        'name_user' => $fullName,
+        'created_at' => $time,
+        'status' => 1,
+        'update_at' => $time,
+    ];
+
+    // Chèn dữ liệu vào bảng wp_review
+    $table_name = 'wp_domain';
+    $inserted = $wpdb->insert($table_name, $data);
+
+    if ($inserted) {
+        $rs['status'] = 1;
+        $rs['mess'] = 'Domain submitted for approval!';
+    } else {
+        $rs['status'] = 0;
+        $rs['mess'] = 'Domain upload failed. Please try again!';
+    }
+    returnajax($rs);
+}
+
+
 
 ?>

@@ -23,7 +23,7 @@ function generate_unique_token()
 function validate_user_token()
 {
     global $wpdb;
-    $table = $wpdb->prefix . 'account_users';
+    $table = 'wp_account_users';
 
     // Check
     if (!isset($_COOKIE['user_token'])) {
@@ -34,29 +34,9 @@ function validate_user_token()
 
     // Lay thong tin
     $user = $wpdb->get_row($wpdb->prepare(
-        "SELECT email, first_name, last_name, avatar, addresses, password, provider, ID FROM $table WHERE token = %s",
+        "SELECT email, phone, first_name, last_name, avatar, addresses, password,phone_number, provider, business_name, business_email, business_network, business_website, plan, bank_name, account_number, routing_number, holder_name, swift, iban, type, ID FROM $table WHERE token = %s",
         $user_token
-    ));
-
-    return $user ? $user : false;
-}
-function validate_dealer_token()
-{
-    global $wpdb;
-    $table = $wpdb->prefix . 'account_dealers';
-
-    // Check
-    if (!isset($_COOKIE['dealer_token'])) {
-        return false;
-    }
-
-    $dealer_token = sanitize_text_field($_COOKIE['dealer_token']);
-
-    // Lay thong tin
-    $dealer = $wpdb->get_row($wpdb->prepare(
-        "SELECT email, phone, first_name, last_name, avatar, addresses, password, provider, business_name, business_email, business_network, business_website, plan, ID FROM $table WHERE token = %s",
-        $dealer_token
-    ));
+    ));  
 
     return $user ? $user : false;
 }
@@ -65,12 +45,13 @@ add_action('wp_ajax_logout', 'logout_user');
 add_action('wp_ajax_nopriv_logout', 'logout_user');
 function logout_user()
 {
+    global $wpdb;
+
     // Kiểm tra xem người dùng đã đăng nhập chưa
     $authenticated_user = validate_user_token();
 
     if ($authenticated_user) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'account_users';
+        $table = 'wp_account_users';
 
         // Xóa token trong database
         $wpdb->update(
@@ -78,20 +59,19 @@ function logout_user()
             ['token' => null],
             ['token' => $_COOKIE['user_token']],
             ['%s'],
-            ['%d']
+            ['%s']
         );
 
         // Xóa cookie
-        setcookie('user_token', '', time() - 3600, '/', '', false, true);
-
-        wp_redirect(home_url());
-        exit;
-    } else {
-        wp_redirect(home_url());
-        exit;
+        // setcookie('user_token', '', time() - 3600, '/', '', false, true);
+        
+        setcookie('user_token', '', time() - 3600, '/', str_replace(platform, '', $_SERVER['HTTP_HOST']));
     }
-}
 
+    // Chuyển hướng về trang chủ
+    wp_redirect(home_url());
+    exit;
+}
 
 add_action('wp_enqueue_scripts', 'enqueue_google_signin_script');
 
@@ -155,7 +135,7 @@ function google_signin_handler()
 
         // Lấy thông tin người dùng sau khi lưu
         global $wpdb;
-        $table_name = $wpdb->prefix . 'account_users';
+        $table_name = 'wp_account_users';
         $user = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table_name WHERE id = %d", $user_id));
 
         if ($user) {
@@ -173,7 +153,7 @@ add_action('init', 'google_signin_handler');
 function google_signin_save_user($first_name, $last_name, $email, $avatar, $provider, $provider_id, $access_token)
 {
     global $wpdb;
-    $table_name = $wpdb->prefix . 'account_users';
+    $table_name = 'wp_account_users';
 
     // Generate a unique user token for authentication
     $user_token = generate_unique_token();
@@ -187,7 +167,8 @@ function google_signin_save_user($first_name, $last_name, $email, $avatar, $prov
             'avatar' => empty($user->avatar) ? $avatar : $user->avatar,
             'provider' => $provider,
             'provider_id' => $provider_id,
-            'token' => $user_token  // Update the token
+            'token' => $user_token,  // Update the token
+            'type' => 1
         );
 
         $wpdb->update(
@@ -206,7 +187,8 @@ function google_signin_save_user($first_name, $last_name, $email, $avatar, $prov
             'avatar' => $avatar,
             'provider' => $provider,
             'provider_id' => $provider_id,
-            'token' => $user_token
+            'token' => $user_token,
+            'type' => 1
         );
 
         $wpdb->insert($table_name, $insert_data);
@@ -215,14 +197,16 @@ function google_signin_save_user($first_name, $last_name, $email, $avatar, $prov
 
     // Set the user token cookie
     $expire = time() + (30 * 24 * 60 * 60); // 30 days
-    setcookie('user_token', $user_token, [
-        'expires' => $expire,
-        'path' => '/',
-        'domain' => '',
-        'secure' => false,
-        'httponly' => true,
-        'samesite' => 'Strict'
-    ]);
+    // setcookie('user_token', $user_token, [
+    //     'expires' => $expire,
+    //     'path' => '/',
+    //     'domain' => '',
+    //     'secure' => false,
+    //     'httponly' => true,
+    //     'samesite' => 'Strict'
+    // ]);
+    setcookie('user_token', $user_token, $expire, '/', str_replace(platform, '', $_SERVER['HTTP_HOST']));
+    setcookie('dealer_token', '', time() - 3600, '/', str_replace(platform, '', $_SERVER['HTTP_HOST']));
 
     return $user_id;
 }
@@ -308,14 +292,16 @@ function handle_facebook_login()
     // Set user token cookie
     if ($result !== false) {
         $expire = time() + (30 * 24 * 60 * 60); // 30 days
-        setcookie('user_token', $user_data_update['token'], [
-            'expires' => $expire,
-            'path' => '/',
-            'domain' => '',
-            'secure' => false,
-            'httponly' => true,
-            'samesite' => 'Strict'
-        ]);
+        // setcookie('user_token', $user_data_update['token'], [
+        //     'expires' => $expire,
+        //     'path' => '/',
+        //     'domain' => '',
+        //     'secure' => false,
+        //     'httponly' => true,
+        //     'samesite' => 'Strict'
+        // ]);
+        setcookie('user_token', $user_data_update['token'], $expire, '/', str_replace(platform, '', $_SERVER['HTTP_HOST']));
+        setcookie('dealer_token', '', time() - 3600, '/', str_replace(platform, '', $_SERVER['HTTP_HOST']));
 
         wp_send_json_success(['redirect' => home_url()]);
     } else {
@@ -582,7 +568,48 @@ function validate_phone_format($result, $tag)
 
 add_action('wp_ajax_nopriv_submitVoucher', 'submitVoucher');
 add_action('wp_ajax_submitVoucher', 'submitVoucher');
+function update_affiliate_percent() {
+    check_ajax_referer('update_affiliate_percent', 'nonce');
+    
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Unauthorized access');
+        return;
+    }
+    
+    global $wpdb;
+    
+    $user_id = intval($_POST['user_id']);
+    $percent = intval($_POST['percent']);
+    $discount = intval($_POST['discount']);
 
+    // Validate input
+    if ($percent <= 0 || $percent >= 100) {
+        wp_send_json_error('Invalid percent value');
+        return;
+    }
+    if ($discount <= 0 || $discount >= 100) {
+        wp_send_json_error('Invalid discount value');
+        return;
+    }
+    global $wpdb;
+
+    $result = $wpdb->update(
+        'wp_affiliate', // Tên bảng
+        array(
+            'percent' => $percent, // Giá trị mới của percent
+            'discount' => $discount // Giá trị mới của discount
+        ),
+        array('id_user' => $user_id), // Điều kiện WHERE
+        array('%d', '%d'), // Định dạng dữ liệu của các cột cập nhật
+        array('%d') // Định dạng dữ liệu của điều kiện WHERE
+    );
+    if ($result !== false) {
+        wp_send_json_success('Update successful');
+    } else {
+        wp_send_json_error('Update failed');
+    }
+}
+add_action('wp_ajax_update_affiliate_percent', 'update_affiliate_percent');
 function submitVoucher()
 {
     global $wpdb;

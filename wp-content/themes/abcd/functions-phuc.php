@@ -222,14 +222,28 @@ function sendMailOrder ($order_code) {
     $datapros = $proorder[0];
 
     $delivery_information = json_decode(str_replace('\\', "", $datapros->dataproduct), true);
+
+    $business_name = '';
+    $reason_for_knowing = '';
+    $authenticated_user = validate_user_token();
+    if (isset($_COOKIE['user_token']) && $authenticated_user) {
+        $business_name = $authenticated_user->business_name;
+        $reason_for_knowing = $authenticated_user->reason_for_knowing;
+    }
+    
+    $authenticated_dealer = validate_dealer_token();
+    if (isset($_COOKIE['dealer_token']) && $authenticated_dealer) {
+        $business_name = $authenticated_dealer->business_name;
+        $reason_for_knowing = $authenticated_dealer->reason_for_knowing;
+    }
 //    print_r($decodedData);die();
 //    $delivery_information = json_decode($datapros->dataproduct);
 
     //Gửi mail
     $table = '<table style="width: 1000px;
-    border: solid 1px;
+    border: solid 1px #000;
     text-align: center;
-    border-collapse: collapse;">
+    border-collapse: collapse;" border="1">
                         <thead >
                         <th>#</th>
                         <th> Name</th>
@@ -276,12 +290,29 @@ function sendMailOrder ($order_code) {
     } else {
         $name = pll__('In progress');
     }
+    if ($datapros->discount_price) {
+        $discount_price = $datapros->discount_price;
+    }else {
+        $discount_price = 0;
+    }
+    $address1 = $datapros->address1 . ", " . $datapros->city . ", " . $datapros->state . ", " . $datapros->country;
+    $address2 = '';
+    if($datapros->address2 != ''){
+        $address2 = $datapros->address2 . ", " . $datapros->city . ", " . $datapros->state . ", " . $datapros->country;
+    }
+    
     $headers[] = "Content-type:text/html;charset=utf-8" . "\r\n";
     $body = get_field('config_order', 'option');
     $body = str_replace('__fullname__', $datapros->name_user, $body);
-    $body = str_replace('__address__', $datapros->address1, $body);
+    $body = str_replace('__address1__', $address1, $body);
+    $body = str_replace('__address2__', $address2, $body);
+    $body = str_replace('__type__', $datapros->address_type, $body);
+    $body = str_replace('__zipcode__', $datapros->ZIPCode, $body);
+    $body = str_replace('__suremeal__', $reason_for_knowing, $body);
+    $body = str_replace('__business__', $business_name, $body);
     $body = str_replace('__phonenumber__', $datapros->phoneNumber, $body);
     $body = str_replace('__orderstatus__', $name, $body);
+    $body = str_replace('__discount__', $discount_price, $body);
     $body = str_replace('__email__', $datapros->email, $body);
     $body = str_replace('__cty__', $datapros->city, $body);
     $body = str_replace('__state__', $datapros->state, $body);
@@ -292,16 +323,43 @@ function sendMailOrder ($order_code) {
     $body = str_replace('__codeoders__', $datapros->order_code, $body);
     $body = str_replace('__timeorder__', date('m/d/Y', $datapros->time_order), $body);
     $body = str_replace('__methodpay__', 'stripe', $body);
-    wp_mail($datapros->email, 'Suremeal - Order', $body, $headers);
+    wp_mail($datapros->email, 'Order confirmation number  '. $datapros->order_code .'  placed by '. $datapros->name_user .'  on  '. date('m/d/Y', $datapros->time_order) .'', $body, $headers);
 
 
-    $tables = '<table style="width: 1000px;
-    border: solid 1px;
+}
+function sendMailAdmin ($order) {
+    // Gửi mail đến admin
+    global $wpdb;
+    $proorder = $wpdb->get_results("SELECT * FROM wp_orders WHERE order_code = '{$order}' ORDER BY id DESC");
+
+    $datapros = $proorder[0];
+
+    $delivery_information = json_decode(str_replace('\\', "", $datapros->dataproduct), true);
+
+    $business_name = '';
+    $reason_for_knowing = '';
+    $authenticated_user = validate_user_token();
+    if (isset($_COOKIE['user_token']) && $authenticated_user) {
+        $business_name = $authenticated_user->business_name;
+        $reason_for_knowing = $authenticated_user->reason_for_knowing;
+    }
+
+    $authenticated_dealer = validate_dealer_token();
+    if (isset($_COOKIE['dealer_token']) && $authenticated_dealer) {
+        $business_name = $authenticated_dealer->business_name;
+        $reason_for_knowing = $authenticated_dealer->reason_for_knowing;
+    }
+//    print_r($decodedData);die();
+//    $delivery_information = json_decode($datapros->dataproduct);
+
+    //Gửi mail
+    $table = '<table style="width: 1000px;
+    border: solid 1px #000;
     text-align: center;
-    border-collapse: collapse;">
-                        <thead style="background: #e5c9c9;">
+    border-collapse: collapse;" border="1">
+                        <thead >
                         <th>#</th>
-                        <th>Product Name</th>
+                        <th> Name</th>
                         <th>Quantity</th>
                         <th>Price</th>
                         <th>Total</th>
@@ -309,36 +367,90 @@ function sendMailOrder ($order_code) {
 </thead>
 <tbody>';
     foreach ($delivery_information as $key => $value):
-        $title = get_the_title($value->id);
-        $total = $value->price * $value->qty;
-        $tables .= '<tr>
+
+//        $title = get_the_title($value->id);
+        $total = $value['price'] * $value['qty'];
+        $table .= '
+																				               <tr>
 																				               <td style="border: solid 1px;">' . ($key + 1) . '</td>
-																				               <td style="border: solid 1px;">' . $title . '</td>
-																				               <td style="border: solid 1px;">' . $value->qty . '</td>
-																				               <td style="border: solid 1px;">' . $value->price . '</td>
+																				               <td style="border: solid 1px;">' . $value['title'] . '</td>
+																				               <td style="border: solid 1px;">' . $value['qty'] . '</td>
+																				               <td style="border: solid 1px;">' . $value['price'] . '</td>
 																				               <td style="border: solid 1px;">' . $total . '</td>
 
 																				</tr>
 
 																				                ';
     endforeach;
-    $tables .= '</tbody>';
-    // Gửi mail đến admin
+    $table .= '</tbody>';
+
+
+    // Gửi mail đến khách hàng
+    $time_pay = date('d/m/Y', $datapros->order);
+    $status = $datapros->status;
+
+
+    $name = "";
+    if ($status == 1) {
+
+        $name = pll__('Processing');
+    } elseif ($status == 2) {
+
+        $name = pll__('Completed');
+    } elseif ($status == 4) {
+
+        $name = pll__('Canceled');
+    } else {
+        $name = pll__('In progress');
+    }
+    if ($datapros->discount_price) {
+        $discount_price = $datapros->discount_price;
+    }else {
+        $discount_price = 0;
+    }
+    $address1 = $datapros->address1 . ", " . $datapros->city . ", " . $datapros->state . ", " . $datapros->country;
+    $address2 = '';
+    if($datapros->address2 != ''){
+        $address2 = $datapros->address2 . ", " . $datapros->city . ", " . $datapros->state . ", " . $datapros->country;
+    }
+
+    $headers[] = "Content-type:text/html;charset=utf-8" . "\r\n";
     $admin_email = get_field('config_order_admin_email', 'option');
-    $body = get_field('config_order', 'option');
+    $body = get_field('config_order_admin', 'option');
     $body = str_replace('__fullname__', $datapros->name_user, $body);
-    $body = str_replace('__address__', $datapros->address1, $body);
+    $body = str_replace('__address__', $address1, $body);
+    $body = str_replace('__address2__', $address2, $body);
+    $body = str_replace('__type__', $datapros->address_type, $body);
+    $body = str_replace('__zipcode__', $datapros->ZIPCode, $body);
+    $body = str_replace('__suremeal__', $reason_for_knowing, $body);
+    $body = str_replace('__business__', $business_name, $body);
     $body = str_replace('__phonenumber__', $datapros->phoneNumber, $body);
-    $body = str_replace('__html__', $tables, $body);
+    $body = str_replace('__orderstatus__', $name, $body);
+    $body = str_replace('__discount__', $discount_price, $body);
     $body = str_replace('__email__', $datapros->email, $body);
+    $body = str_replace('__cty__', $datapros->city, $body);
     $body = str_replace('__state__', $datapros->state, $body);
+    $body = str_replace('__totalorder__', $datapros->price_payment, $body);
+    $body = str_replace('__shippingfee__', $datapros->transport_fee, $body);
     $body = str_replace('__country__', $datapros->country, $body);
+    $body = str_replace('__html__', $table, $body);
     $body = str_replace('__codeoders__', $datapros->order_code, $body);
     $body = str_replace('__timeorder__', date('m/d/Y', $datapros->time_order), $body);
     $body = str_replace('__methodpay__', 'stripe', $body);
 //        $body = str_replace('__order__', '<p style="font-weight: bold; font-size: 20px;">Test</p>', $body);
 
     wp_mail($admin_email, 'Suremeal - Customer order information', $body, $headers);
+}
+
+function sendMailDealerSatus ($email, $fullName) {
+    // global $wpdb;
+    // $dealer = $wpdb->get_results("SELECT * FROM wp_account_dealers WHERE id = '{$dealer_id}' ORDER BY id DESC");
+
+    $headers[] = "Content-type:text/html;charset=utf-8" . "\r\n";
+    $body = get_field('account_activation_notification_email', 'option');
+    $body = str_replace('__fullname__', $fullName, $body);
+    $body = str_replace('__link__', home_url('/sign-in-dealer'), $body);
+    wp_mail($email, 'Suremeal - Approve dealer', $body, $headers);
 }
 
 function sendMailOrderSatus ($order_code) {
@@ -353,9 +465,9 @@ function sendMailOrderSatus ($order_code) {
 
     //Gửi mail
     $table = '<table style="width: 1000px;
-    border: solid 1px;
+    border: solid 1px #000;
     text-align: center;
-    border-collapse: collapse;">
+    border-collapse: collapse;" border="1">
                         <thead >
                         <th>#</th>
                         <th> Name</th>
@@ -410,17 +522,26 @@ function sendMailOrderSatus ($order_code) {
     } elseif ($status_transport == 2) {
 
         $name_transport = pll__('Packaging');
-    } elseif ($status_transport == 4) {
+    } elseif ($status_transport == 3) {
 
         $name_transport = pll__('On The Road');
     } else {
         $name_transport = pll__('Delivered');
     }
+
+    if ($datapros->discount_price) {
+        $discount_price = $datapros->discount_price;
+    }else {
+        $discount_price = 0;
+    }
+    $address = $datapros->address1 . ", " . $datapros->city . ", " . $datapros->state . ", " . $datapros->country;
+
     $headers[] = "Content-type:text/html;charset=utf-8" . "\r\n";
     $body = get_field('order_status_notification_mail', 'option');
     $body = str_replace('__fullname__', $datapros->name_user, $body);
-    $body = str_replace('__address__', $datapros->address1, $body);
+    $body = str_replace('__address__', $address, $body);
     $body = str_replace('__phonenumber__', $datapros->phoneNumber, $body);
+    $body = str_replace('__discount__', $discount_price, $body);
     $body = str_replace('__orderstatus__', $name, $body);
     $body = str_replace('__orderStatus__', $name, $body);
     $body = str_replace('__DeliveryStatus__', $name_transport, $body);
@@ -434,19 +555,19 @@ function sendMailOrderSatus ($order_code) {
     $body = str_replace('__codeoders__', $datapros->order_code, $body);
     $body = str_replace('__timeorder__', date('m/d/Y', $datapros->time_order), $body);
     $body = str_replace('__methodpay__', 'stripe', $body);
-    wp_mail($datapros->email, 'Suremeal - Order', $body, $headers);
+    wp_mail($datapros->email, 'Order confirmation number  '. $datapros->order_code .'  placed by '. $datapros->name_user .'  on  '. date('m/d/Y', $datapros->time_order) .'', $body, $headers);
 
 
     $tables = '<table style="width: 1000px;
-    border: solid 1px;
+    border: solid 1px #000;
     text-align: center;
-    border-collapse: collapse;">
+    border-collapse: collapse;" border="1">
                         <thead style="background: #e5c9c9;">
-                        <th>#</th>
-                        <th>Product Name</th>
-                        <th>Quantity</th>
-                        <th>Price</th>
-                        <th>Total</th>
+                        <th style="border: solid 1px;">#</th>
+                        <th style="border: solid 1px;">Product Name</th>
+                        <th style="border: solid 1px;">Quantity</th>
+                        <th style="border: solid 1px;">Price</th>
+                        <th style="border: solid 1px;">Total</th>
 
 </thead>
 <tbody>';
@@ -469,7 +590,7 @@ function sendMailOrderSatus ($order_code) {
     $admin_email = get_field('config_order_admin_email', 'option');
     $body = get_field('config_order', 'option');
     $body = str_replace('__fullname__', $datapros->name_user, $body);
-    $body = str_replace('__address__', $datapros->address1, $body);
+    $body = str_replace('__address__', $address, $body);
     $body = str_replace('__phonenumber__', $datapros->phoneNumber, $body);
     $body = str_replace('__html__', $tables, $body);
     $body = str_replace('__email__', $datapros->email, $body);
@@ -502,6 +623,14 @@ function submitOrder() {
     $address1 = no_sql_injection(xss($_POST['address1']));
     $postaCode = no_sql_injection(xss($_POST['postaCode']));
     $address2 = no_sql_injection(xss($_POST['address2']));
+    $address_type = no_sql_injection(xss($_POST['address_type']));
+
+    $checkbox_reasons = $_POST['reason_for_knowing_checkbox'] ?? [];
+    $text_reason = $_POST['reason_for_knowing_text'] ?? '';
+    
+    // Join multiple checkbox values with comma or use text reason
+    $reason_for_knowing = !empty($checkbox_reasons) ? implode(', ', $checkbox_reasons) : $text_reason;
+    
     $city = no_sql_injection(xss($_POST['city']));
     $totalPrice = (float)no_sql_injection(xss($_POST['totalPrice']));
     $shippingFee = (float)no_sql_injection(xss($_POST['shippingFee']));
@@ -511,34 +640,40 @@ function submitOrder() {
     $zipCode = no_sql_injection(xss($_POST['zipCode']));
     $decodedData = json_decode(str_replace('\\', "", $dataProduct), true);
     $timestamp = time();
+    $timestampNextDay = $timestamp + (24 * 60 * 60);
+    $image_aff = '';
+    $title_aff = 'Bonus points';
+
+    // Check product stock
     foreach ($decodedData as $key => $value) {
+        $image_aff = $value['img'];
         $instock = get_field('instock', $value['id']);
         if ($value['qty'] > $instock) {
             $rs['status'] = 0;
             $rs['mess'] = $value['title'] . ' product is not in stock!';
             returnajax($rs);
-        }else {
-            continue;
         }
     }
 
-    //update voucher nếu có
-    $voucher = $wpdb->get_row($wpdb->prepare("SELECT * FROM wp_voucher WHERE voucher_code = %s", $voucher_code));
-    if ($voucher) {
-        if ((int)$voucher->number_of_vouchers > 0) {
-            $wpdb->update(
-                'wp_voucher',
-                [
-                    'number_of_vouchers' => (int)$voucher->number_of_vouchers - 1,
-                    'number_of_uses' => (int)$voucher->number_of_uses + 1
-                ],
-                ['voucher_code' => $voucher_code]
-            );
-        } else {
-            $rs['status'] = 0;
-            $rs['mess'] = 'Voucher is no longer valid or has been used up.';
-            returnajax($rs);
-            return;
+    // Validate and update voucher if exists
+    if ($voucher_code) {
+        $voucher = $wpdb->get_row($wpdb->prepare("SELECT * FROM wp_voucher WHERE voucher_code = %s", $voucher_code));
+        if ($voucher) {
+            if ((int)$voucher->number_of_vouchers > 0) {
+                $wpdb->update(
+                    'wp_voucher',
+                    [
+                        'number_of_vouchers' => (int)$voucher->number_of_vouchers - 1,
+                        'number_of_uses' => (int)$voucher->number_of_uses + 1
+                    ],
+                    ['voucher_code' => $voucher_code]
+                );
+            } else {
+                $rs['status'] = 0;
+                $rs['mess'] = 'Voucher is no longer valid or has been used up.';
+                returnajax($rs);
+                return;
+            }
         }
     }
 
@@ -555,24 +690,90 @@ function submitOrder() {
         if ($exists) $length += 2;
     } while ($exists);
 
+    // Get user and dealer information
     $id_user = '';
     $authenticated_user = validate_user_token();
     if (isset($_COOKIE['user_token']) && $authenticated_user) {
         $id_user = $authenticated_user->ID;
+        $where = array('id' => $id_user);
+        $inserted = $wpdb->update('wp_account_users', [
+            'reason_for_knowing' => $reason_for_knowing
+        ], $where);
     }
+    
     $id_dealer = '';
     $authenticated_dealer = validate_dealer_token();
     if (isset($_COOKIE['dealer_token']) && $authenticated_dealer) {
         $id_dealer = $authenticated_dealer->ID;
+        $where = array('id' => $id_dealer);
+        $inserted = $wpdb->update('wp_account_dealers', [
+            'reason_for_knowing' => $reason_for_knowing
+        ], $where);
     }
 
-    $state_province = "";
-    if (!empty($state)) {
-        $state_province = $state;
-    }else {
-        $state_province = $province;
+    $state_province = !empty($state) ? $state : $province;
+
+    // Handle affiliate logic
+    $distribution_code = null;
+    $affiliate_product = null;
+    if (!(isset($_COOKIE['dealer_token']) && $authenticated_dealer)) {
+        if (isset($_COOKIE['distribution_code'])) {
+            $distribution_code = $_COOKIE['distribution_code'];
+            $bonus_points_per_order = get_field('bonus_points_per_order', 'option');
+            $curron_aff = $wpdb->get_row($wpdb->prepare("SELECT * FROM wp_affiliate WHERE distribution_code = %s", $distribution_code));
+            
+            // Check if user is not trying to affiliate their own products
+            if ($authenticated_user && $curron_aff && $curron_aff->id_user == $authenticated_user->ID) {
+                $distribution_code = null;
+            } else if ($curron_aff) {
+                // Process affiliate products and calculate commissions
+                $product_info = json_decode($curron_aff->product_infomation, true);
+                $order_products = $decodedData;
+                
+                // Calculate affiliate amounts
+                $affiliate_calc = [];
+                foreach ($order_products as $order_product) {
+                    $affiliate_amount = 0;
+                    foreach ($product_info as $aff_product) {
+                        if ($aff_product['id'] === $order_product['id']) {
+                            // Tính affiliate amount có nhân với quantity
+                            $affiliate_amount = ($order_product['price'] * $order_product['qty'] * $curron_aff->percent) / 100;
+                            break;
+                        }
+                    }
+                    
+                    $affiliate_calc[] = [
+                        'id' => $order_product['id'],
+                        'price' => (string)$order_product['price'],
+                        'qty' => (string)$order_product['qty'],
+                        'affiliate' => (string)$affiliate_amount
+                    ];
+                }
+                
+                $affiliate_product = json_encode($affiliate_calc);
+
+                // Add bonus points for affiliate
+                $note = 'You got points when completing orders ' . $order_code;
+                $data_distribution = [
+                    'id_user' => $curron_aff->id_user,
+                    'point' => $bonus_points_per_order,
+                    'image' => $image_aff,
+                    'title' => $title_aff,
+                    'note' => $note,
+                    'date_create' => $timestamp,
+                    'date_end' => $timestampNextDay,
+                    'used_points' => 0,
+                    'remaining_points' => $bonus_points_per_order,
+                    'order_id' => $order_code,
+                    'transaction_type' => 1
+                ];
+
+                $wpdb->insert('points', $data_distribution);
+            }
+        }
     }
 
+    // Prepare order data
     $data = [
         'id_user' => $id_user,
         'id_dealer' => $id_dealer,
@@ -580,9 +781,11 @@ function submitOrder() {
         'address1' => $address1,
         'discount_price' => $discount,
         'address2' => $address2,
+        'address_type' => $address_type,
         'phoneNumber' => $phone_numer,
         'code_voucher' => $voucher_code,
         'posta_code' => $postaCode,
+        'distribution_code' => $distribution_code,
         'city' => $city,
         'state' => $state_province,
         'name_user' => $fullName,
@@ -590,6 +793,7 @@ function submitOrder() {
         'country' => $country,
         'ZIPCode' => $zipCode,
         'dataproduct' => $dataProduct,
+        'affiliate_product' => $affiliate_product,
         'price_payment' => $totalPrice,
         'price' => $price,
         'time_order' => $timestamp,
@@ -599,40 +803,106 @@ function submitOrder() {
         'status_transport' => '1'
     ];
 
+    // Insert order
     $table_name = $wpdb->prefix . 'orders';
     $inserted = $wpdb->insert($table_name, $data);
+
+    // Update product stock
     foreach ($decodedData as $key => $value) {
         $qty = $value['qty'];
         $instock = get_field('instock', $value['id']);
         $newInstock = $instock - $qty;
         update_field('instock', $newInstock, $value['id']);
-
     }
 
-    $authenticated_user = validate_user_token();
-    $id = $authenticated_user->ID;
+    // Thêm đoạn code này sau khi insert order thành công và trước khi tạo Stripe session
+    if ($inserted && $affiliate_product) {
+        // Decode affiliate_product để kiểm tra
+        $affiliate_data = json_decode($affiliate_product, true);
+        
+        // Kiểm tra xem có sản phẩm nào được tính affiliate không
+        $has_affiliate = false;
+        foreach ($affiliate_data as $item) {
+            if (floatval($item['affiliate']) > 0) {
+                $has_affiliate = true;
+                break;
+            }
+        }
+        
+        // Chỉ tạo voucher nếu có sản phẩm được tính affiliate
+        // if ($has_affiliate) {
+        //     // Lấy các field cấu hình voucher
+        //     $min_order = get_field('min_order', 'option');
+        //     $discount_amount = get_field('discount_amount', 'option');
+        //     $max_discount = get_field('max_discount', 'option');
 
-        if ($saveInfo == 1) {
+        //     // Tạo voucher code ngẫu nhiên
+        //     $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        //     $voucher_code = '';
+        //     do {
+        //         $voucher_code = '';
+        //         for ($i = 0; $i < 8; $i++) {
+        //             $voucher_code .= $characters[rand(0, strlen($characters) - 1)];
+        //         }
+        //         $exists = $wpdb->get_var($wpdb->prepare(
+        //             "SELECT COUNT(*) FROM wp_voucher WHERE voucher_code = %s",
+        //             $voucher_code
+        //         ));
+        //     } while ($exists);
 
-            $data_user = array(
-                'city' => $city,
-                'address1_shipper' => $address1,
-                'address2_shipper' => $address2,
-                'fullname_shipper' => $fullName,
-                'zipcode_shipper' => $zipCode,
-                'email_shipper' => $email,
-                'state' => $state_province,
-                'phone_number' => $phone_numer,
-                'country' => $country,
-            );
+        //     // Tính thời gian hết hạn (1 tuần)
+        //     $end_date = time() + (7 * 24 * 60 * 60);
 
-            $where = array('id' => $id);
+        //     $formatted_start_date = date('d/m/Y H:i', time());
+        //     $formatted_end_date = date('d/m/Y H:i', $end_date);
 
+        //     // Chuẩn bị dữ liệu voucher
+        //     $voucher_data = [
+        //         'id_user' => $id_user,
+        //         'voucher_code' => $voucher_code,
+        //         'voucher_name' => 'Voucher từ đơn hàng ' . $order_code,
+        //         'discount_type' => 2,
+        //         'discount_amount' => $discount_amount,
+        //         'min_order' => $min_order,
+        //         'max_discount' => $max_discount,
+        //         'number_of_vouchers' => 1,
+        //         'type' => 1,
+        //         'number_of_uses' => 0,
+        //         'start_date' => $formatted_start_date,
+        //         'end_date' => $formatted_end_date, 
+        //         'status' => 2
+        //     ];
+
+        //     // Insert voucher vào database
+        //     $wpdb->insert('wp_voucher', $voucher_data);
+        // }
+    }
+
+    // Save user information if requested
+    if ($saveInfo == 1) {
+        $data_user = array(
+            'city' => $city,
+            'address1_shipper' => $address1,
+            'address2_shipper' => $address2,
+            'fullname_shipper' => $fullName,
+            'zipcode_shipper' => $zipCode,
+            'email_shipper' => $email,
+            'state' => $state_province,
+            'phone_number' => $phone_numer,
+            'country' => $country,
+        );
+
+        $where = array('id' => $id_user);
+
+        if ($authenticated_user) {
             $wpdb->update('wp_account_users', $data_user, $where);
         }
+        if ($authenticated_dealer) {
+            $wpdb->update('wp_account_dealers', $data_user, $where);
+        }
+    }
 
-
-    // Calculate line items and distribute discount
+    // Calculate line items for Stripe
     $totalProductPriceBeforeDiscount = 0;
     foreach ($decodedData as $product) {
         $totalProductPriceBeforeDiscount += $product['price'] * $product['qty'];
@@ -655,7 +925,7 @@ function submitOrder() {
                 'currency' => 'usd',
                 'product_data' => [
                     'name' => $productTitle,
-                    'images' => [urlencode($product['img'])], // Mã hóa URL hình ảnh
+                    'images' => [urlencode($product['img'])],
                 ],
                 'unit_amount' => round($adjustedPrice * 100),
             ],
@@ -663,6 +933,7 @@ function submitOrder() {
         ];
     }
 
+    // Add shipping fee to line items
     $lineItems[] = [
         'price_data' => [
             'currency' => 'usd',
@@ -674,12 +945,11 @@ function submitOrder() {
         'quantity' => 1,
     ];
 
-// Stripe Setup
-    $stripeSecretKey = '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';
-//    $stripeSecretKey = 'sk_test_51QJVYKLGjsMtdIMl0BOmJPNCwXME37Fcvf6IlSjCKBV5fQHglp9VNvj62dCnJeL6HIlVDuNfjTt4tMRiDOlQ2XaC00wu6wLQyk';
+    // Stripe payment processing
+    $stripeSecretKey = 'sk_test_51QJVYKLGjsMtdIMl0BOmJPNCwXME37Fcvf6IlSjCKBV5fQHglp9VNvj62dCnJeL6HIlVDuNfjTt4tMRiDOlQ2XaC00wu6wLQyk';
     \Stripe\Stripe::setApiKey($stripeSecretKey);
 
-    $YOUR_DOMAIN = home_url(); // Thay bằng URL hợp lệ (hoặc mã hóa Punycode nếu cần)
+    $YOUR_DOMAIN = home_url();
 
     header('Content-Type: application/json');
 
@@ -691,16 +961,13 @@ function submitOrder() {
             'success_url' => $YOUR_DOMAIN . '/payment-success?session_id=' . urlencode('{CHECKOUT_SESSION_ID}'),
             'cancel_url' => $YOUR_DOMAIN . '/payment-error',
         ]);
-//        echo json_encode(['id' => $checkout_session->id]);
     } catch (\Stripe\Exception\ApiErrorException $e) {
         echo json_encode(['error' => $e->getMessage()]);
     }
 
-
     $_SESSION['order_code'] = $order_code;
-
-
-
+    sendMailAdmin($order_code);
+    // Return response
     $rs = [];
     if ($inserted) {
         $rs['status'] = 1;
@@ -768,6 +1035,11 @@ function addVoucher()
     $so_luong = sanitize_text_field($_POST['so_luong']);
     $type = sanitize_text_field($_POST['type']);
     $producdIdChoose = sanitize_text_field($_POST['producdIdChoose']);
+    
+    // $apply_user = isset($_POST['apply_user']) ? $_POST['apply_user'] : [];
+    // $apply_ship = sanitize_text_field($_POST['apply_ship']);
+    // $apply_stack = isset($_POST['apply_stack']) ? $_POST['apply_stack'] : [];
+    $reuse = sanitize_text_field($_POST['reuse']);
     // nếu loai_giam_gia = 0 thì dùng muc_giam còn loai_giam_gia = 1 thì dùng muc_giam_2
     $muc_giam_ins = 0;
     if ($loai_giam_gia == 1) {
@@ -775,6 +1047,25 @@ function addVoucher()
     } else {
         $muc_giam_ins = $muc_giam_2;
     }
+    // Loại bỏ giá trị 'all' thành null
+    // if (in_array('all', $apply_user)) {
+    //     $apply_user = null;
+    // } else {
+    //     // Chuyển mảng thành JSON string
+    //     $apply_user = json_encode(array_map('intval', $apply_user));
+    // }
+
+    // if ($apply_ship == 'null') {
+    //     $apply_ship = null;
+    // }
+
+    // if (in_array('null', $apply_stack)) {
+    //     $apply_stack = null;
+    // } else {
+    //     // Chuyển mảng thành JSON string
+    //     $apply_stack = json_encode(array_map('intval', $apply_stack));
+    // }
+
     $data = array(
         'voucher_name' => $ten_chuong_trinh,
         'voucher_code' => $ma_voucher,
@@ -788,6 +1079,10 @@ function addVoucher()
         'number_of_vouchers' => $so_luong,
         'type' =>  $type,
         'status' => 2,
+        // 'id_user' => $apply_user,
+        // 'discount_shipping' => $apply_ship,
+        // 'id_voucher' => $apply_stack,
+        'reuse' => $reuse,
     );
     $check = $wpdb->get_row("SELECT * FROM wp_voucher WHERE voucher_code = '$ma_voucher'");
 
@@ -819,6 +1114,11 @@ function updateVoucher()
     $gia_tri_toi_thieu = $_POST['gia_tri_toi_thieu'];
     $producdIdChoose = $_POST['producdIdChoose'];
    
+    // $apply_user = isset($_POST['apply_user']) ? $_POST['apply_user'] : [];
+    // $apply_ship = $_POST['apply_ship'];
+    // $apply_stack = isset($_POST['apply_stack']) ? $_POST['apply_stack'] : [];
+    $reuse = $_POST['reuse'];
+
     $time_start = $_POST['time_start'];
     $time_end = $_POST['time_end'];
     $type = $_POST['type'];
@@ -830,17 +1130,46 @@ function updateVoucher()
     }
 
     $formattedNumber = number_format($gia_tri_toi_thieu, 2, '.', '');
+    if ($muc_giam_co_gioi_han = "") {
+        $discount_mini = 0;
+    }else {
+        $discount_mini = $muc_giam_co_gioi_han;
+    }
+
+    // Loại bỏ giá trị 'all' nếu có
+    // if (in_array('all', $apply_user)) {
+    //     $apply_user = null;
+    // } else {
+    //     // Chuyển mảng thành JSON string
+    //     $apply_user = json_encode(array_map('intval', $apply_user));
+    // }
+
+    // if ($apply_ship == 'null') {
+    //     $apply_ship = null;
+    // }
+    
+    // if (in_array('null', $apply_stack)) {
+    //     $apply_stack = null;
+    // } else {
+    //     // Chuyển mảng thành JSON string
+    //     $apply_stack = json_encode(array_map('intval', $apply_stack));
+    // }
+
     $data = array(
         'voucher_name' => $ten_chuong_trinh,
         'discount_type' => $loai_giam_gia,
         'discount_amount' => $muc_giam_ins,
-        'max_discount' => $muc_giam_co_gioi_han,
+        'max_discount' => $discount_mini,
         'min_order' => $formattedNumber,
         'number_of_vouchers' => $so_luong,
         'start_date' => $time_start,
         'end_date' => $time_end,
         'type' => $type,
         'products' => $producdIdChoose,
+        // 'id_user' => $apply_user,
+        // 'discount_shipping' => $apply_ship,
+        // 'id_voucher' => $apply_stack,
+        'reuse' => $reuse,
     );
 
     $where = array('id' => $id);
@@ -1154,7 +1483,7 @@ function changeTransportStatus()
     returnajax($rs);
 }
 
-// Thay đổi trạng thái thanh toan
+// Thay đổi trạng thái user
 add_action('wp_ajax_nopriv_changeUserStatus', 'changeUserStatus');
 add_action('wp_ajax_changeUserStatus', 'changeUserStatus');
 
@@ -1167,14 +1496,13 @@ function changeUserStatus()
         returnajax($rs);
     }
     $status = no_sql_injection(xss($_POST['status']));
-    $orderId = no_sql_injection(xss($_POST['UserId']));
-    if ($status < 1 || $status > 2) {
-        $rs['status'] = error_code;
-        $rs['mess'] = messerror . " Lỗi Validate";
-        returnajax($rs);
-    }
-    $getOrder = $wpdb->get_row("SELECT * FROM wp_account_dealers WHERE id = {$orderId}");
-    $order_code = $getOrder->id;
+    $dealerId = no_sql_injection(xss($_POST['UserId']));
+    
+    $getOrder = $wpdb->get_row("SELECT * FROM wp_account_dealers WHERE id = {$dealerId}");
+
+    $email = $getOrder->email;
+    $fullName = $getOrder->first_name . ' ' . $getOrder->last_name; 
+
     if (empty($getOrder)) {
         $rs['status'] = error_code;
         $rs['mess'] = "No user found. Please check and try again.";
@@ -1184,8 +1512,11 @@ function changeUserStatus()
     $wpdb->update(
         'wp_account_dealers',
         array('status' => $status),
-        array('id' => $orderId)
+        array('id' => $dealerId)
     );
+    if ($status == 1) {
+        sendMailDealerSatus($email, $fullName);
+    }
     $rs['status'] = 'success_code';
     $rs['mess'] = "Status updated successfully!";
     returnajax($rs);
@@ -1719,4 +2050,140 @@ function remover_select() {
 add_action('wp_ajax_remover_select', 'remover_select');
 add_action('wp_ajax_nopriv_remover_select', 'remover_select');
 
+function sendmailOTP($otp_code, $email){
+    $headers[] = "Content-type:text/html;charset=utf-8" . "\r\n";
+    $body = get_field('mail_otp', 'option');
+    $body = str_replace('__otp__', $otp_code, $body);
+    wp_mail($email, 'Suremeal - OTP confirm', $body, $headers);
+}
+
+function handle_resend_otp() {
+    if (!isset($_POST['email'])) {
+        wp_send_json_error(['message' => 'Email is required']);
+    }
+
+    $email = sanitize_email(base64_decode($_POST['email']));
+    
+    global $wpdb;
+    $user = $wpdb->get_row($wpdb->prepare(
+        "SELECT *, TIMESTAMPDIFF(DAY, created_at, NOW()) as days_diff 
+         FROM wp_pending_dealers 
+         WHERE email = %s",
+        $email
+    ));
+
+    if (!$user) {
+        wp_send_json_error(['message' => 'User not found']);
+    }
+
+    $current_time = current_time('mysql');
+
+    // Nếu đã qua 1 ngày kể từ created_at, reset lại các trường
+    if ($user->days_diff >= 1) {
+        $wpdb->update(
+            'wp_pending_dealers',
+            array(
+                'resend_count' => 0,
+                'last_resend_date' => $current_time,
+                'created_at' => $current_time
+            ),
+            array('email' => $email)
+        );
+        
+        // Lấy lại thông tin user sau khi reset
+        $user = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM wp_pending_dealers WHERE email = %s",
+            $email
+        ));
+    }
+
+    // Kiểm tra thời gian resend cuối cùng
+    if ($user->last_resend_date) {
+        $last_resend = strtotime($user->last_resend_date);
+        $current_timestamp = time();
+        
+        if (($current_timestamp - $last_resend) < 120) { // 2 phút
+            wp_send_json_error(['message' => 'Please wait 2 minutes before requesting another OTP']);
+        }
+    }
+
+    // Kiểm tra số lần resend
+    if ($user->resend_count >= 3) {
+        $time_until_reset = strtotime($user->created_at . ' +1 day') - time();
+        $hours = floor($time_until_reset / 3600);
+        $minutes = floor(($time_until_reset % 3600) / 60);
+        
+        wp_send_json_error([
+            'message' => sprintf(
+                'Maximum resend attempts reached. Please try again after %d hours and %d minutes',
+                $hours,
+                $minutes
+            )
+        ]);
+    }
+
+    // Tạo OTP mới
+    $new_otp = sprintf("%06d", mt_rand(0, 999999));
+    $otp_expired_at = date('Y-m-d H:i:s', strtotime($current_time . ' +2 minutes'));
+
+    // Cập nhật thông tin trong database
+    $wpdb->update(
+        'wp_pending_dealers',
+        array(
+            'otp' => $new_otp,
+            'otp_expired_at' => $otp_expired_at,
+            'resend_count' => $user->resend_count + 1,
+            'last_resend_date' => $current_time
+        ),
+        array('email' => $email)
+    );
+
+    // Gửi mail OTP mới
+    sendmailOTP($new_otp, $email);
+    
+    wp_send_json_success(['message' => 'OTP has been resent']);
+} 
+add_action('wp_ajax_resend_otp', 'handle_resend_otp');
+add_action('wp_ajax_nopriv_resend_otp', 'handle_resend_otp');
+
+add_action('wp_ajax_deleteUser', 'deleteUser');
+add_action('wp_ajax_nopriv_deleteUser', 'deleteUser'); // Cho phép người dùng chưa đăng nhập gọi AJAX nếu cần
+
+function deleteUser() {
+    if (!isset($_POST['id_user'])) {
+        wp_send_json_error(['message' => 'Thiếu id_user']);
+    }
+
+    global $wpdb;
+    $id_user = intval($_POST['id_user']);
+
+    $user = $wpdb->get_row($wpdb->prepare("SELECT * FROM wp_account_users WHERE id = %s", $id_user));
+
+    $email = $user->email;
+
+
+    $newEmail = 'deactivate-' . $email;
+
+    $data_user = array(
+        'status' => 0,
+        'email' => $newEmail,
+        'token' => 'null'
+    );
+
+    $where = array('id' => $id_user);
+
+
+    $inserted = $wpdb->update('wp_account_users', $data_user, $where);
+
+    $rs = [];
+    if ($inserted) {
+        $rs['status'] = 1;
+        $rs['mess'] = 'Deactivate user successfully';
+    } else {
+        $rs['status'] = 0;
+        $rs['mess'] = 'User deactivate failed';
+    }
+
+    returnajax($rs);
+}
 ?>

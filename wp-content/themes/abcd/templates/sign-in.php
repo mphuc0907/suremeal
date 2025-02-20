@@ -9,9 +9,7 @@ if (isset($_COOKIE['user_token']) && $authenticated_user) {
 $client_id = '451202130918-qkndmpg1jorcqhugj630pnr0u7sueblb.apps.googleusercontent.com';
 $redirect_uri = home_url('/sign-in');
 $google_login_url = 'https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=' . $client_id . '&redirect_uri=' . urlencode($redirect_uri) . '&scope=openid%20profile%20email&access_type=online&include_granted_scopes=true';
-
-// $facebook_login_url = generate_facebook_login_url();
-
+$login_error_message = get_field('login_error_message', 'option');
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = sanitize_email($_POST['email']);
     $password = $_POST['password'];
@@ -19,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Kiểm tra và xác thực như trước
     if (empty($errors)) {
         global $wpdb;
-        $table = $wpdb->prefix . 'account_users';
+        $table = 'wp_account_users';
         $user = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE email = %s", $email));
 
         if ($user && password_verify($password, $user->password)) {
@@ -35,14 +33,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($update_result !== false) {
                 $expire = time() + (30 * 24 * 60 * 60); // 30 ngay
-                setcookie('user_token', $new_token, [
-                    'expires' => $expire,
-                    'path' => '/',
-                    'domain' => '',
-                    'secure' => false,
-                    'httponly' => true,
-                    'samesite' => 'Strict'
-                ]);
+                // setcookie('user_token', $new_token, [
+                //     'expires' => $expire,
+                //     'path' => '/',
+                //     'domain' => '',
+                //     'secure' => false,
+                //     'httponly' => true
+                // ]);
+                setcookie('user_token', $new_token, $expire, '/', '.' . $_SERVER['HTTP_HOST']);
+                setcookie('dealer_token', '', time() - 3600, '/', '.' . $_SERVER['HTTP_HOST']);
 
                 wp_send_json_success(['redirect' => home_url()]);
             } else {
@@ -50,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 wp_send_json_error($errors);
             }
         } else {
-            $errors['general'] = pll__('Wrong email or password');
+            $errors['general'] = $login_error_message;
         }
     }
 
@@ -71,7 +70,7 @@ get_header();
             <div class="w-full max-w-[667px] mx-auto rounded-2xl border border-solid border-neutral-200 bg-white">
                 <div class="p-8 flex flex-col items-center gap-8">
                     <h2 class="text-heading-h4 text-gray-9">
-                        <?php pll_e('Sign in') ?>
+                        <?php pll_e('Login') ?>
                     </h2>
                     <div class="flex flex-col items-center gap-6">
                         <form id="signInForm" class="w-full">
@@ -103,11 +102,11 @@ get_header();
                                             <input type="checkbox">
                                             <span class="checkmark"></span>
                                         </div>
-                                        <p class="input-text"><?php pll_e('Keep me sign in') ?></p>
+                                        <p class="input-text"><?php pll_e('Keep me Login') ?></p>
                                     </label>
                                     <p class="mt-1 text-body-sm-regular text-neutral-500"><?php pll_e('Check this box only when on a private device.') ?></p>
                                 </div>
-                                <button type="submit" class="mx-auto min-w-[162px] button bg-primary text-body-md-semibold text-white"><?php pll_e('Sign in') ?></button>
+                                <button type="submit" class="mx-auto min-w-[162px] button bg-primary text-body-md-semibold text-white"><?php pll_e('Login') ?></button>
                             </div>
                             <p class="text-[#FF0000] text-body-sm-regular error-general text-center mt-2" id="err-mes"></p>
                         </form>
@@ -121,11 +120,6 @@ get_header();
                                     <figure><img src="<?= $url ?>/assets/image/icon/sign-gg.svg" alt="sign"></figure>
                                     <p class="text-body-md-medium text-[#344054]"><?php pll_e('Continue with Google') ?></p>
                                 </a>
-
-                                <!-- <div id="fb_login">
-                                    <fb:login-button scope="public_profile,email,user_likes" onlogin="checkLoginState();">
-                                    </fb:login-button>
-                                </div> -->
                                 <a href="#" class="other-sign" id="fb-login">
                                     <figure><img src="<?= $url ?>/assets/image/icon/sign-fb.svg" alt="sign"></figure>
                                     <p class="text-body-md-medium text-[#344054]"><?php pll_e('Continue with Facebook') ?></p>
@@ -146,108 +140,11 @@ get_header();
 <?php get_footer() ?>
 <script type="text/javascript" src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script>
 
-
-<!-- <script>
-
-    window.fbAsyncInit = function() {
-        FB.init({
-            appId: '1027062409021492',
-            cookie: true,
-            xfbml: true,
-            version: 'v16.0'
-        });
-        console.log(FB);
-        FB.AppEvents.logPageView();
-        // check đã login hay chưa
-        FB.getLoginStatus(function(response) {
-            check_calback(response);
-
-        });
-
-    };
-
-    function checkLoginState() {
-        FB.getLoginStatus(function(response) {
-
-            check_calback(response);
-
-        });
-    }
-
-    function check_calback(response) {
-        console.log(response);
-    }
-
-
-    (function(d, s, id) {
-        var js, fjs = d.getElementsByTagName(s)[0];
-        if (d.getElementById(id)) {
-            return;
-        }
-        js = d.createElement(s);
-        js.id = id;
-        js.src = "https://connect.facebook.net/vi_VN/sdk.js?version=v16.0";
-        fjs.parentNode.insertBefore(js, fjs);
-    }(document, 'script', 'facebook-jssdk'));
-</script> -->
-
 <script>
-    // window.fbAsyncInit = function() {
-    //     FB.init({
-    //         appId: '1027062409021492', // Thay bằng App ID của bạn
-    //         cookie: true,
-    //         xfbml: true,
-    //         version: 'v16.0'
-    //     });
-    //     console.log(FB);
-    //     FB.AppEvents.logPageView();
-
-    //     // Kiểm tra trạng thái đăng nhập
-    //     FB.getLoginStatus(function(response) {
-    //         check_calback(response);
-    //     });
-    // };
-
-    // // Hàm kiểm tra trạng thái đăng nhập
-    // function check_calback(response) {
-    //     console.log(response);
-    //     if (response.status === 'connected') {
-    //         // Nếu đã đăng nhập, gọi API để lấy thông tin người dùng
-    //         getUserInfo(response.authResponse.accessToken);
-    //     } else {
-    //         console.log('User is not logged in.');
-    //     }
-    // }
-
-    // // Hàm lấy thông tin người dùng qua Graph API
-    // function getUserInfo(accessToken) {
-    //     FB.api('/me', { fields: 'id,name,email,picture', access_token: accessToken }, function(response) {
-    //         if (response && !response.error) {
-    //             console.log('User Info:', response);
-    //             // Ví dụ: Hiển thị tên người dùng
-    //             alert(`Welcome, ${response.name}!`);
-    //         } else {
-    //             console.error('Error fetching user info:', response.error);
-    //         }
-    //     });
-    // }
-
-    // // Tải Facebook SDK
-    // (function(d, s, id) {
-    //     var js, fjs = d.getElementsByTagName(s)[0];
-    //     if (d.getElementById(id)) {
-    //         return;
-    //     }
-    //     js = d.createElement(s);
-    //     js.id = id;
-    //     js.src = "https://connect.facebook.net/vi_VN/sdk.js?version=v16.0";
-    //     fjs.parentNode.insertBefore(js, fjs);
-    // }(document, 'script', 'facebook-jssdk'));
-
 // Initialize Facebook SDK
 window.fbAsyncInit = function() {
     FB.init({
-        appId      : '1027062409021492', // Replace with your actual Facebook App ID
+        appId      : '1027062409021492', // Facebook App ID
         cookie     : true,
         xfbml      : true,
         version    : 'v18.0'

@@ -6,9 +6,49 @@ $title = get_the_title();
 $img_des = get_field('img_des', $post_id);
 $price = get_field('price', $post_id);
 $sale_price = get_field('sale_price', $post_id);
+$list_promotion = get_field('list_promotion', $post_id);
+$promo = $list_promotion[0]['promotion'];
+function get_affiliate_discount($product_id)
+{
+    if (!isset($_COOKIE['distribution_code'])) {
+        return null;
+    }
 
+    global $wpdb;
+    $distribution_code = sanitize_text_field($_COOKIE['distribution_code']);
+
+    $affiliate = $wpdb->get_row($wpdb->prepare(
+        "SELECT * FROM wp_affiliate WHERE distribution_code = %s AND status = 1",
+        $distribution_code
+    ));
+
+    if (!$affiliate) {
+        return null;
+    }
+
+    // Decode the product information JSON
+    $product_info = json_decode($affiliate->product_infomation, true);
+    if (!is_array($product_info)) {
+        return null;
+    }
+
+    // Find if this product is in the affiliate's product list
+    $product_entry = array_filter($product_info, function ($item) use ($product_id) {
+        return $item['id'] == $product_id;
+    });
+
+    if (empty($product_entry)) {
+        return null;
+    }
+
+    return [
+        'discount_percentage' => $affiliate->discount,
+        'product_price' => reset($product_entry)['price']
+    ];
+}
 // Add dealer discount check functionality
-function get_dealer_discount($dealer_id, $product_id) {
+function get_dealer_discount($dealer_id, $product_id)
+{
     global $wpdb;
     $discount = $wpdb->get_row(
         $wpdb->prepare(
@@ -21,9 +61,10 @@ function get_dealer_discount($dealer_id, $product_id) {
     return $discount;
 }
 
-function calculate_dealer_price($original_price, $discount) {
+function calculate_dealer_price($original_price, $discount)
+{
     if (!$discount) return false;
-    
+
     if ($discount->discount_type == 0) {
         // Fixed amount discount
         return max(0, $original_price - $discount->discount_amount);
@@ -46,17 +87,46 @@ $dealer_discount = $dealer_id ? get_dealer_discount($dealer_id, $post_id) : null
 
 // Calculate final price based on dealer discount
 $final_price = $price;
+$show_original_price = false;
 $discount_percentage = 0;
 
-if ($dealer_discount) {
-    $dealer_price = calculate_dealer_price($price, $dealer_discount);
-    if ($sale_price) {
-        $final_price = min($dealer_price, $sale_price);
+if ($authenticated_dealer) {
+    // If dealer is logged in, use dealer pricing logic
+    $dealer_discount = get_dealer_discount($dealer_id, $post_id);
+    if ($dealer_discount) {
+        $dealer_price = calculate_dealer_price($price, $dealer_discount);
+        if ($sale_price) {
+            $final_price = min($dealer_price, $sale_price);
+        } else {
+            $final_price = $dealer_price;
+        }
+        $show_original_price = $final_price < $price;
     } else {
-        $final_price = $dealer_price;
+        $final_price = $sale_price ? $sale_price : $price;
+        $show_original_price = $sale_price && $sale_price < $price;
     }
 } else {
-    $final_price = $sale_price ? $sale_price : $price;
+    // Check for affiliate discount if no dealer is logged in
+    $affiliate_info = get_affiliate_discount($post_id);
+    if ($affiliate_info) {
+        // Calculate affiliate discounted price
+        $affiliate_base_price = floatval($affiliate_info['product_price']);
+        $discount_percentage = floatval($affiliate_info['discount_percentage']);
+        $affiliate_price = $affiliate_base_price * (1 - ($discount_percentage / 100));
+
+        // Compare with sale price if exists
+        if ($sale_price) {
+            $final_price = min($affiliate_price, $sale_price);
+        } else {
+            $final_price = $affiliate_price;
+        }
+        $show_original_price = $final_price < $affiliate_base_price;
+        $price = $affiliate_base_price; // Show affiliate base price as original price
+    } else {
+        // No affiliate discount, use regular sale price logic
+        $final_price = $sale_price ? $sale_price : $price;
+        $show_original_price = $sale_price && $sale_price < $price;
+    }
 }
 
 // Calculate discount percentage
@@ -103,24 +173,44 @@ $info = $product_info['product_info'];
 $benefit = $product_info['benefit'];
 $use = $product_info['use'];
 $term_list = get_the_terms($post_id, 'category_product');
-$args = new WP_Query(array(
-    'post_type'      => 'product',
-    'posts_per_page' => -1,
-    'paged' => $paged,
-    'post_status' => 'publish',
-    'order' => 'DESC',
-    'orderby' => 'date',
-    'tax_query' => array(                     //(array) - Lấy bài viết dựa theo taxonomy
-        'relation' => 'AND',                      //(string) - Mối quan hệ giữa các tham số bên trong, AND hoặc OR
-        array(
-            'taxonomy' => 'category_product',                //(string) - Tên của taxonomy
-            'field' => 'slug',                    //(string) - Loại field cần xác định term của taxonomy, sử dụng 'id' hoặc 'slug'
-            'terms' => $term_list,    //(int/string/array) - Slug của các terms bên trong taxonomy cần lấy bài
-            'include_children' => true,           //(bool) - Lấy category con, true hoặc false
-            'operator' => 'IN'                    //(string) - Toán tử áp dụng cho mảng tham số này. Sử dụng 'IN' hoặc 'NOT IN'
-        )
-    ),
-));
+if (pll_current_language() == 'en') {
+    $args = new WP_Query(array(
+        'post_type'      => 'product',
+        'posts_per_page' => -1,
+        'paged' => $paged,
+        'post_status' => 'publish',
+        'order' => 'DESC',
+        'orderby' => 'date',
+        'tax_query' => array(                     //(array) - Lấy bài viết dựa theo taxonomy
+            'relation' => 'AND',                      //(string) - Mối quan hệ giữa các tham số bên trong, AND hoặc OR
+            array(
+                'taxonomy' => 'category_product',                //(string) - Tên của taxonomy
+                'field' => 'slug',                    //(string) - Loại field cần xác định term của taxonomy, sử dụng 'id' hoặc 'slug'
+                'terms' => $term_list,    //(int/string/array) - Slug của các terms bên trong taxonomy cần lấy bài
+                'include_children' => true,           //(bool) - Lấy category con, true hoặc false
+                'operator' => 'IN'                   //(string) - Toán tử áp dụng cho mảng tham số này. Sử dụng 'IN' hoặc 'NOT IN'
+            )
+        ),
+        'post__not_in' => array($post_id)
+    ));
+} elseif (pll_current_language() == 'vn') {
+    $args = new WP_Query(array(
+        'post_type'      => 'product',
+        'posts_per_page' => -1,
+        'paged' => $paged,
+        'post_status' => 'publish',
+        'order' => 'DESC',
+        'orderby' => 'date',
+        'meta_query'     => array(
+            array(
+                'key'     => 'view_product',
+                'value'   => true,
+                'compare' => '='
+            ),
+        ),
+        'post__not_in' => array($post_id)
+    ));
+}
 $args_post = $args->posts;
 $total_post = count($args_post);
 $servings = get_field('servings', $post_id);
@@ -210,14 +300,14 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
 
                     <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
                         <a href="/" class="text-secondary hover:text-primary" itemprop="item">
-                            <span itemprop="name">Home</span>
+                            <span itemprop="name"><?php pll_e('Home') ?></span>
                         </a>
                         <meta itemprop="position" content="1" />
                     </li>
                     <span>/</span>
                     <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
                         <a href="/product" class="text-secondary hover:text-primary" itemprop="item">
-                            <span itemprop="name">Products</span>
+                            <span itemprop="name"><?php pll_e('Products') ?></span>
                         </a>
                         <meta itemprop="position" content="1" />
                     </li>
@@ -327,6 +417,16 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
         .is-selected .mini-item {
             border: 2px solid #0E74BC;
         }
+
+        table td {
+            border: 1px solid #000;
+            padding: 2px 4px;
+        }
+
+        #product-info ul, #product-info ol, #benefit ul, #benefit ol, #use ul, #use ol {
+            list-style: initial;
+            list-style-position: inside;
+        }
     </style>
 
     <section>
@@ -369,7 +469,7 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
                                 </h2>
                                 <div class="flex items-center gap-3">
                                     <div class="flex items-center gap-1 md:gap-3">
-                                        <?php if (!empty($servings)) : ?> <p class="text-body-md-regular text-neutral-500"><?= $servings  ?> servings </p>
+                                        <?php if (!empty($servings)) : ?> <p class="text-body-md-regular text-neutral-500"><?= $servings  ?> <?php pll_e('servings') ?> </p>
                                             <div class="w-1 h-1 rounded-full bg-neutral-400"></div><?php endif; ?>
                                         <div class="flex items-center gap-1">
                                             <!--                                            --><? //= renderStarRatingByProductId($post_id) 
@@ -382,7 +482,7 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
                                             <figure><img src="<?= $url ?>/assets/image/icon/star-second.svg" alt="star icon"></figure>
                                         </div>
                                         <div class="w-1 h-1 rounded-full bg-neutral-400"></div>
-                                        <p class="text-body-sm-regular text-neutral-500"><?= countReview($post_id) ?> Reviews</p>
+                                        <p class="text-body-sm-regular text-neutral-500"><?= countReview($post_id) ?> <?php pll_e('Reviews') ?></p>
                                     </div>
                                 </div>
                             </div>
@@ -407,45 +507,85 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
                                 </a>
                             </div>
                         </div>
-                        <?php if (!empty($products_of_the_same_type)) { ?>
+                        <div class="flex flex-col gap-6">
                             <div class="flex items-center gap-4 lg:gap-8">
-                                <p class="text-body-md-regular">Quantity</p>
-                                <div class="flex flex-wrap gap-2">
-                                    <div class="quantity-choose text-body-md-regular <?php if ($instock <= 0) : ?>disable<?php else: ?>active <?php endif; ?> " <?php if ($instock <= 0) : ?> data-toggle="tooltip" title="Sold out" <?php endif; ?>>
-                                        <?= $qty ?> pack
-                                    </div>
-                                    <?php
-
-                                    foreach ($products_of_the_same_type as $key => $post) :
-                                        $pack = get_field('quantity', $post->ID);
-                                        $instocks = get_field('instock', $post->ID);
-                                        if (empty($instock)) {
-                                            $instocks = 0;
-                                        }
-                                    ?>
-
-
-                                        <div class="tooltip-wrapper">
-                                            <?php if ($instocks <= 0) : ?>
-                                                <div class="tooltip-top">
-                                                    <p class="text-body-md-medium text-gray-9">Sold out</p>
-                                                </div>
-                                            <?php endif; ?>
-                                            <a href="<?= get_permalink($post->ID) ?>" class="quantity-choose text-body-md-regular " <?php if ($instocks <= 0) : ?> data-toggle="tooltip" title="Sold out" <?php endif; ?>>
-                                                <?= $pack ?> pack
-                                            </a>
-                                        </div>
-                                    <?php
-                                    endforeach;
-
-                                    ?>
+                                <p class="min-w-[70px] text-body-md-regular"><?php pll_e('Quantity') ?></p>
+                                <div class="counter flex items-center justify-center w-[110px] h-10 border border-solid border-[#eee] rounded-lg text-body-sm-medium text-[#121138]">
+                                    <button class="decrement px-3 py-1 btn-minus">−</button>
+                                    <input type="text" value="1" readonly id="qty-pro" class="quantity w-8 text-center focus:outline-none" />
+                                    <button class="increment px-3 py-1 btn-plus">+</button>
                                 </div>
                             </div>
-                        <?php } ?>
+                            <?php if (!empty($products_of_the_same_type)) { ?>
+                                <div class="flex items-center gap-4 lg:gap-8">
+                                    <p class="min-w-[70px] text-body-md-regular"><?php pll_e('Combo') ?></p>
+                                    <!-- old version -->
+                                    <!-- <div class="flex flex-wrap gap-2">
+
+                                        <?php
+
+                                        foreach ($products_of_the_same_type as $key => $post) :
+                                            $pack = get_field('quantity', $post->ID);
+                                            $instocks = get_field('instock', $post->ID);
+                                            if (empty($instock)) {
+                                                $instocks = 0;
+                                            }
+                                        ?>
+                                            <?php if ($post->ID == $post_id) : ?>
+                                            <div class="quantity-choose text-body-md-regular <?php if ($instocks <= 0) : ?>disable<?php else: ?>active <?php endif; ?> " <?php if ($instocks <= 0) : ?> data-toggle="tooltip" title="Sold out" <?php endif; ?>>
+                                                <?= $pack ?> <?php pll_e('pack') ?>
+                                            </div>
+                                        <?php else : ?>
+                                            <div class="tooltip-wrapper">
+                                                <?php if ($instocks <= 0) : ?>
+                                                    <div class="tooltip-top">
+                                                        <p class="text-body-md-medium text-gray-9"><?php pll_e('Sold out') ?></p>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <a href="<?= get_permalink($post->ID) ?>" class="quantity-choose text-body-md-regular " <?php if ($instocks <= 0) : ?> data-toggle="tooltip" title="Sold out" <?php endif; ?>>
+                                                    <?= $pack ?> <?php pll_e('pack') ?>
+                                                </a>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php
+                                        endforeach;
+
+                                        ?>
+                                    </div> -->
+                                    <!-- new version -->
+                                    <div class="relative combo-wrapper w-full lg:max-w-[240px]">
+                                        <div class="input-combo-product cursor-pointer">
+                                            <!-- <p class="input-value text-body-md-regular text-gray-9 truncate-1row">Buy <?= $pack ?>-pack ($5 savings)</p> -->
+                                            <p class="input-value text-body-md-regular text-gray-9 truncate-1row"><?= $list_promotion[0]['promotion'] ?></p>
+                                        </div>
+                                        <div class="combo-wrap shadow-1 transition-all duration-500 ease-in-out hidden absolute top-[100%] flex-col p-3 gap-3 mt-3 w-full bg-white rounded-lg">
+                                            <div class="combo-container flex flex-col gap-3 max-h-[350px] custom-scrollbar overflow-y-auto">
+                                                <?php
+                                                foreach ($products_of_the_same_type as $key => $post) :
+                                                    $pack = get_field('quantity', $post->ID);
+                                                    $instocks = get_field('instock', $post->ID);
+                                                    $promotion = get_field('list_promotion', $post->ID);
+                                                    // if (empty($instock)) {
+                                                    //     $instocks = 0;
+                                                    // }
+                                                ?>
+                                                    <div class="combo-select <?= $instocks <= 0 ? 'disabled' : '' ?>">
+                                                        <a href="<?= get_permalink($post->ID) ?>" style="<?= $instocks <= 0 ? 'cursor: not-allowed;' : '' ?>">
+                                                            <p class="text-body-md-regular"><?= $promotion[0]['promotion'] ?></p>
+                                                        </a>
+                                                    </div>
+                                                    <hr class="divider bg-[#C0C0C2]">
+                                                <?php endforeach;?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php } ?>
+                        </div>
                         <div class="price-feature">
                             <div class="flex flex-col gap-1">
-                                <p class="text-body-lg-medium text-gray-7">Buy now at price</p>
-                                <?php if ($final_price < $price) : ?>
+                                <p class="text-body-lg-medium text-gray-7"><?php pll_e('Buy now at price') ?></p>
+                                <?php if ($show_original_price) : ?>
                                     <h2 class="text-heading-h3-5 text-gray-8" data-price="<?= $final_price ?>">
                                         <?= formatBalance($final_price) ?>
                                     </h2>
@@ -454,7 +594,7 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
                                             <?= formatBalance($price) ?>
                                         </p>
                                         <span class="text-body-md-medium text-primary">
-                                            <?= number_format($discount_percentage, 2) ?>%
+                                            <?= $discount_percentage ?>%
                                         </span>
                                     </div>
                                 <?php else : ?>
@@ -466,7 +606,7 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
                             <?php if (!empty($list_promotion)) : ?>
                                 <hr class="divider">
                                 <div class="py-3 px-5">
-                                    <p class="text-body-lg-semibold text-gray-7">Featured Promotion</p>
+                                    <p class="text-body-lg-semibold text-gray-7"><?php pll_e('Featured Promotion') ?></p>
                                     <ul class="feature-promo text-body-md-regular text-gray-7 mt-3">
                                         <?php foreach ($list_promotion as $key => $pro) : ?>
                                             <li><?= $pro['promotion'] ?></li>
@@ -479,14 +619,17 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
                     <div class="flex flex-col md:flex-row gap-3">
                         <button
                             class="button border-primary w-full md:w-1/2 text-body-md-semibold text-primary add-to-cart"
-                            data-id="<?= $post_id ?>" 
+                            data-id="<?= $post_id ?>"
                             data-link="<?php echo get_permalink($post_id) ?>"
                             data-img="<?php echo checkImage($post_id) ?>"
                             data-price="<?= $final_price ?>"
-                            data-title="<?= $title ?>" 
+                            data-title="<?= $title ?>"
                             data-instock="<?= $instock ?>"
+                            data-promo="<?= $promo ?>"
                             data-weight="<?= get_field('pound', $post_id) ?>"
-                            data-pack="<?= $qty ?>">
+                            data-pack="<?= $qty ?>"
+                            data-quantity="<?= $qty ?>">
+
                             <svg xmlns="http://www.w3.org/2000/svg" width="25" height="24" viewBox="0 0 25 24"
                                 fill="none">
                                 <path fill-rule="evenodd" clip-rule="evenodd"
@@ -499,18 +642,20 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
                                     d="M17.25 18.0001C18.0784 18.0001 18.75 18.6716 18.75 19.5001C18.75 20.3285 18.0784 21.0001 17.25 21.0001C16.4216 21.0001 15.75 20.3285 15.75 19.5001C15.75 18.6716 16.4216 18.0001 17.25 18.0001Z"
                                     fill="#ED1B24" />
                             </svg>
-                            Add To Cart
+                            <?php pll_e('Add To Cart') ?>
                         </button>
                         <button class="button bg-primary w-full md:w-1/2 text-body-md-semibold text-white buy-now"
-                            data-id="<?= $post_id ?>" 
+                            data-id="<?= $post_id ?>"
                             data-link="<?php echo get_permalink($post_id) ?>"
                             data-img="<?php echo checkImage($post_id) ?>"
                             data-price="<?= $final_price ?>"
-                            data-title="<?= $title ?>" 
+                            data-title="<?= $title ?>"
                             data-instock="<?= $instock ?>"
+                            data-promo="<?= $promo ?>"
                             data-weight="<?= get_field('pound', $post_id) ?>"
-                            data-pack="<?= $qty ?>">Buy
-                            Now</button>
+                            data-pack="<?= $qty ?>"
+                            data-quantity="<?= $qty ?>">
+                            <?php pll_e('Buy Now') ?></button>
                     </div>
                 </div>
             </div>
@@ -547,17 +692,17 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
                     <div class="sticky top-[130px] w-full flex flex-row md:flex-col">
                         <?php if (!empty($info)) : ?>
                             <div class="description-tab active">
-                                <p class="text-body-xl-medium text-gray-8">Product info</p>
+                                <p class="text-body-xl-medium text-gray-8"><?php pll_e('Product info') ?></p>
                             </div>
                         <?php endif; ?>
                         <?php if (!empty($benefit)) : ?>
                             <div class="description-tab">
-                                <p class="text-body-xl-medium text-gray-8">Benefit</p>
+                                <p class="text-body-xl-medium text-gray-8"><?php pll_e('Benefit') ?></p>
                             </div>
                         <?php endif; ?>
                         <?php if (!empty($use)) : ?>
                             <div class="description-tab">
-                                <p class="text-body-xl-medium text-gray-8">Use</p>
+                                <p class="text-body-xl-medium text-gray-8"><?php pll_e('Use') ?></p>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -568,19 +713,19 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
                     <div class="flex flex-col gap-10">
                         <?php if (!empty($info)) : ?>
                             <div id="product-info" class="flex flex-col gap-4">
-                                <h3 class="text-heading-h6 text-gray-8">Product info</h3>
+                                <h3 class="text-heading-h6 text-gray-8"><?php pll_e('Product info') ?></h3>
                                 <?= $info ?>
                             </div>
                         <?php endif; ?>
                         <?php if (!empty($benefit)) : ?>
                             <div id="benefit" class="flex flex-col gap-4">
-                                <h3 class="text-heading-h6 text-gray-8">Benefit</h3>
+                                <h3 class="text-heading-h6 text-gray-8"><?php pll_e('Benefit') ?></h3>
                                 <?= $benefit ?>
                             </div>
                         <?php endif; ?>
                         <?php if (!empty($use)) : ?>
                             <div id="use" class="flex flex-col gap-4">
-                                <h3 class="text-heading-h6 text-gray-8">Use</h3>
+                                <h3 class="text-heading-h6 text-gray-8"><?php pll_e('Use') ?></h3>
                                 <?= $use ?>
                             </div>
                         <?php endif; ?>
@@ -595,13 +740,13 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
             <div data-aos="fade-up" data-aos-duration="1500" class="flex flex-wrap gap-4 md:gap-6 py-10 px-4 md:px-6 rounded-xl bg-white">
                 <div class="flex flex-col gap-6 lg:gap-8 w-full">
                     <div class="flex gap-2 items-end">
-                        <h2 class="text-heading-h4 text-black">Reviews</h2>
-                        <p class="mb-[5px] text-body-md-regular text-gray-7">(<?= countReview($post_id) ?> Reviews)</p>
+                        <h2 class="text-heading-h4 text-black"><?php pll_e('Reviews') ?></h2>
+                        <p class="mb-[5px] text-body-md-regular text-gray-7">(<?= countReview($post_id) ?> <?php pll_e('Reviews') ?>)</p>
                     </div>
                     <hr class="divider">
                     <div class="flex flex-col md:flex-row items-center gap-10 lg:gap-20">
                         <div class="">
-                            <p class="text-body-md-medium text-gray-7">Based on <?= $totalReviews ?> Reviews</p>
+                            <p class="text-body-md-medium text-gray-7"><?php pll_e('Based on') ?> <?= $totalReviews ?> <?php pll_e('Reviews') ?></p>
                             <div class="flex items-center gap-1 mt-2">
                                 <p class="text-heading-h2 text-gray-9"><?= number_format($averageRating, 1) ?></p>
                                 <figure class="w-6 h-6"><img src="<?= $url ?>/assets/image/icon/star-yellow.svg"
@@ -610,7 +755,7 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
                             </div>
                             <button class="button bg-primary mt-5 text-body-md-semibold text-white open-modal"
                                 data-modal="modalReview">
-                                Write a review
+                                <?php pll_e('Write a review') ?>
                             </button>
                         </div>
 
@@ -699,19 +844,19 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
                     </div>
 
                     <div class="flex items-center gap-4">
-                        <p class="text-body-md-regular">Sort by</p>
+                        <p class="text-body-md-regular"><?php pll_e('Sort by') ?></p>
                         <div class="flex flex-wrap gap-3">
                             <div class="comment-choose active" data-sort="most_recent">
-                                Most recent
+                                <?php pll_e('Most recent') ?>
                             </div>
                             <div class="comment-choose" data-sort="highest_rating">
-                                Highest rating
+                                <?php pll_e('Highest rating') ?>
                             </div>
                             <div class="comment-choose" data-sort="lowest_rating">
-                                Lowest rating
+                                <?php pll_e('Lowest rating') ?>
                             </div>
                             <div class="comment-choose" data-sort="most_helpful">
-                                Most helpful
+                                <?php pll_e('Most helpful') ?>
                             </div>
                         </div>
                     </div>
@@ -764,7 +909,7 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
                                 <figure class="w-6 h-6"><img
                                         src="<?= $url ?>/assets/image/icon/double-chev-down-20-second.svg" alt="icon">
                                 </figure>
-                                <span>View more reviews</span>
+                                <span><?php pll_e('View more reviews') ?></span>
                             </button>
                         <?php endif; ?>
                     </div>
@@ -778,7 +923,7 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
         <div class="container flex flex-col gap-6">
             <div data-aos="fade-down" data-aos-duration="1500" class="flex flex-row gap-6 md:items-center justify-between">
                 <div class="flex flex-col gap-2 flex-1">
-                    <h2 class="text-heading-h3-5 text-gray-8">Related Products
+                    <h2 class="text-heading-h3-5 text-gray-8"><?php pll_e('Related Products') ?>
                     </h2>
                 </div>
                 <?php if ($total_post > 3) : ?>
@@ -814,25 +959,48 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
                             $instock = 0;
                         }
                         $sale_price = get_field('sale_price', $val->ID);
-                        
-                        
-                        // Get dealer discount if dealer is logged in
-                        $dealer_discount = $dealer_id ? get_dealer_discount($dealer_id, $val->ID) : null;
-                        
+
                         // Calculate final price based on dealer discount
                         $final_price = $price;
-                        if ($dealer_discount) {
-                            // Calculate dealer discount price from original price
-                            $dealer_price = calculate_dealer_price($price, $dealer_discount);
-                            // If there's a sale price, compare it with dealer price
-                            if ($sale_price) {
-                                $final_price = min($dealer_price, $sale_price);
+                        $show_original_price = false;
+
+                        if ($authenticated_dealer) {
+                            // If dealer is logged in, use dealer pricing logic
+                            $dealer_discount = get_dealer_discount($dealer_id, $val->ID);
+                            if ($dealer_discount) {
+                                $dealer_price = calculate_dealer_price($price, $dealer_discount);
+                                if ($sale_price) {
+                                    $final_price = min($dealer_price, $sale_price);
+                                } else {
+                                    $final_price = $dealer_price;
+                                }
+                                $show_original_price = $final_price < $price;
                             } else {
-                                $final_price = $dealer_price;
+                                $final_price = $sale_price ? $sale_price : $price;
+                                $show_original_price = $sale_price && $sale_price < $price;
                             }
                         } else {
-                            // If no dealer discount, use sale price if available
-                            $final_price = $sale_price ? $sale_price : $price;
+                            // Check for affiliate discount if no dealer is logged in
+                            $affiliate_info = get_affiliate_discount($val->ID);
+                            if ($affiliate_info) {
+                                // Calculate affiliate discounted price
+                                $affiliate_base_price = floatval($affiliate_info['product_price']);
+                                $discount_percentage = floatval($affiliate_info['discount_percentage']);
+                                $affiliate_price = $affiliate_base_price * (1 - ($discount_percentage / 100));
+
+                                // Compare with sale price if exists
+                                if ($sale_price) {
+                                    $final_price = min($affiliate_price, $sale_price);
+                                } else {
+                                    $final_price = $affiliate_price;
+                                }
+                                $show_original_price = $final_price < $affiliate_base_price;
+                                $price = $affiliate_base_price; // Show affiliate base price as original price
+                            } else {
+                                // No affiliate discount, use regular sale price logic
+                                $final_price = $sale_price ? $sale_price : $price;
+                                $show_original_price = $sale_price && $sale_price < $price;
+                            }
                         }
                     ?>
                         <div class="swiper-slide w-full">
@@ -846,7 +1014,7 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
                                     </a>
                                     <?php if ($instock <= 0) : ?>
                                         <div class=" absolute top-4 right-4 rounded-[27px] bg-[#C0C0C2] px-3 py-2">
-                                            <span class="text-body-sm-bold text-white">Sold out</span>
+                                            <span class="text-body-sm-bold text-white"><?php pll_e('Sold out') ?></span>
                                         </div>
                                     <?php endif; ?>
                                 </div>
@@ -867,15 +1035,15 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
                                         <div class="flex items-center gap-1">
                                             <?= renderStarRatingByProductId($val->ID) ?>
                                         </div>
-                                        <p class="text-body-sm-regular text-neutral-500"><?= countReview($val->ID) ?> Reviews</p>
+                                        <p class="text-body-sm-regular text-neutral-500"><?= countReview($val->ID) ?> <?php pll_e('Reviews') ?></p>
                                     </div>
                                     <p class="min-h-3lh truncate-3row text-body-md-regular text-neutral-500"><a
                                             href="<?= get_permalink($val->ID) ?>">
                                             <?= $des ?></a>
                                     </p>
                                     <div class="flex gap-3 items-center">
-                                        <span class="text-body-sm-regular text-neutral-500">From</span>
-                                        <?php if ($final_price < $price): ?>
+                                        <span class="text-body-sm-regular text-neutral-500"><?php pll_e('From') ?></span>
+                                        <?php if ($show_original_price): ?>
                                             <div class="flex items-center gap-2">
                                                 <p class="text-body-md-medium text-neutral-500 line-through">
                                                     <?= formatBalance($price) ?>
@@ -890,7 +1058,7 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
                                                     <?= formatBalance($price) ?>
                                                 </p>
                                             </div>
-                                        <?php endif; ?> 
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
@@ -913,7 +1081,7 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
             <div class="modal-head">
                 <div class="w-full flex justify-between gap-6">
                     <h2 class="text-body-xl-medium text-lg lg:text-xl 2xl:text-2xl text-black-2">
-                        Write a review
+                        <?php pll_e('Write a review') ?>
                     </h2>
                     <div class="close-modal">
                         <figure class="w-6 h-6"><img src="<?= $url ?>/assets/image/icon/close-24.svg" alt="close">
@@ -927,22 +1095,22 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
                     <input type="hidden" name="csrfToken" value="<?php echo wp_create_nonce('review_nonce') ?>">
                     <div class="flex flex-col lg:flex-row gap-5">
                         <label class="input-label">
-                            <p class="input-title">Name
+                            <p class="input-title"><?php pll_e('Name') ?>
                                 <!-- <span class="text-primary">*</span> -->
                             </p>
-                            <input type="text" class="input-field" name="name_user" placeholder="Your name
+                            <input type="text" class="input-field" name="name_user" placeholder="<?php pll_e('Your name') ?>
                             ">
                         </label>
                         <label class="input-label">
                             <p class="input-title">Email
                                 <!-- <span class="text-primary">*</span> -->
                             </p>
-                            <input type="text" class="input-field" name="email" placeholder="Your email
+                            <input type="text" class="input-field" name="email" placeholder="<?php pll_e('Your email') ?>
                             ">
                         </label>
                     </div>
                     <div class="flex flex-col gap-1">
-                        <p>Rating</p>
+                        <p><?php pll_e('Rating') ?></p>
                         <div class="star-rating  flex gap-[15px]">
                             <img src="<?= $url ?>/assets/image/icon/star-gray.svg" class="star cursor-pointer"
                                 data-index="1" alt="star">
@@ -957,24 +1125,24 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
                         </div>
                     </div>
                     <label class="input-label">
-                        <p class="input-title">Title of review
+                        <p class="input-title"><?php pll_e('Title of review') ?>
                             <!-- <span class="text-primary">*</span> -->
                         </p>
-                        <input type="text" class="input-field" name="title_review" placeholder="Give your review a title
+                        <input type="text" class="input-field" name="title_review" placeholder="<?php pll_e('Give your review a title') ?>
                         ">
                     </label>
                     <label class="input-label">
-                        <p class="input-title">How was your overall experience?
+                        <p class="input-title"><?php pll_e('How was your overall experience?') ?>
                             <!-- <span class="text-primary">*</span> -->
                         </p>
                         <textarea type="text" class="input-field" id="content_review" name="content_review" rows="5"
-                            placeholder="Your overall experience
+                            placeholder="<?php pll_e('Your overall experience') ?>
                         "></textarea>
                     </label>
 
                     <div class="mx-auto lg:mx-0 mt-2 flex items-center justify-end">
                         <button type="submit" class="button bg-primary text-body-md-semibold text-white submit_review"
-                            style="width: 260px;">Submit</button>
+                            style="width: 260px;"><?php pll_e('Submit') ?></button>
                     </div>
                 </form>
             </div>
@@ -986,6 +1154,10 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
     $(document).ready(function() {
         $('[data-toggle="tooltip"]').tooltip();
     });
+    $('#qty-pro').on('change', function() {
+        $('.add-to-cart').attr('data-quantity', $(this).val());
+        $('.buy-now').attr('data-quantity', $(this).val());
+    }).trigger('change');
 </script>
 
 <!-- swiper script -->
@@ -1055,21 +1227,23 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
     });
 
     $('.btn-minus').addClass('disabled');
+
     $('.btn-plus').click(function() {
         var value = parseInt($(this).prev('input').val());
-        // bỏ disabled
         $('.btn-minus').removeClass('disabled');
-        $(this).prev('input').val(value + 1);
+        $(this).prev('input').val(value + 1).trigger('change'); // Trigger the change event
     });
+
     $('.btn-minus').click(function() {
         var value = parseInt($(this).next('input').val());
         if (value > 1) {
-            $(this).next('input').val(value - 1);
+            $(this).next('input').val(value - 1).trigger('change'); // Trigger the change event
         }
         if (value == 2) {
             $(this).addClass('disabled');
         }
     });
+
     $(document).ready(function() {
         var value = $('#soluong').val();
         $(window).scroll(function() {
@@ -1088,96 +1262,88 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
             $('.list-device').css('max-width', '54rem');
         }
     });
-    $(document).ready(function() {
-        $("#review-product").on('submit', function(e) {
-            e.preventDefault();
-        }).validate({
-            rules: {
-                name_user: {
-                    required: true
-                },
-                email: {
-                    required: true,
-                    email: true
-                },
-                title_review: {
-                    required: true
-                },
-                content_review: {
-                    required: true
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('review-product');
+        const requiredFields = {
+            name_user: '<?php pll_e('Please enter your name user') ?>',
+            email: '<?php pll_e('Please enter your email') ?>',
+            title_review: '<?php pll_e('Please enter your title review') ?>',
+            content_review: '<?php pll_e('Please enter your content review') ?>'
+        };
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault(); // Prevent form submission
+
+            // Reset previous error messages
+            const existingErrors = form.querySelectorAll('.error-message');
+            existingErrors.forEach(error => error.remove());
+
+            // Validate form
+            let isValid = true;
+
+            // Basic validation
+            for (let field in requiredFields) {
+                const input = form.querySelector(`[name="${field}"]`);
+                const value = input.value.trim();
+
+                if (!value) {
+                    isValid = false;
+                    showError(input, requiredFields[field]);
                 }
-            },
-            messages: {
-                name_user: {
-                    required: "Please enter your name user"
-                },
-                email: {
-                    required: "Please enter your email",
-                    email: "Please enter a valid email address"
-                },
-                title_review: {
-                    required: "Please enter your title review"
-                },
-                content_review: {
-                    required: "Please enter your content review"
+
+                // Email validation
+                if (field === 'email' && value) {
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(value)) {
+                        isValid = false;
+                        showError(input, '<?php pll_e('Please enter a valid email address') ?>');
+                    }
                 }
-            },
-            submitHandler: function(form) {
-                var site_key = '<?php echo get_field('site_key', 'option'); ?>';
-                var link = 'http://your-ajax-endpoint-url'; // Thay bằng URL của bạn
+            }
+
+            // If validation passes, proceed with submission
+            if (isValid) {
+                const site_key = '<?php echo get_field('site_key', 'option'); ?>';
 
                 grecaptcha.ready(function() {
                     grecaptcha.execute(site_key, {
                         action: 'review_capcha'
                     }).then(function(token) {
-                        var id_user = '<?= $id_user ?>';
-                        var email = $('input[name="email"]').val();
-                        var name_user = $('input[name="name_user"]').val();
-                        var title_review = $('input[name="title_review"]').val();
-                        var id_product = $('input[name="id_product"]').val();
-                        var content_review = $('#content_review').val();
-                        var activeCount = $('.star-rating img.active').length;
-                        let csrfToken = $('input[name="csrfToken"]').val();
-                        var formData = new FormData($('#review-product')[0]);
-                        formData.append('email', email);
-                        formData.append('name_user', name_user);
-                        formData.append('id_user', name_user);
-                        formData.append('title_review', title_review);
-                        formData.append('id_user', id_user);
-                        formData.append('activeCount', activeCount);
-                        formData.append('id_product', id_product);
-                        formData.append('content_review', content_review);
+                        const formData = new FormData(form);
+                        const activeCount = document.querySelectorAll('.star-rating img.active').length;
+
+                        // Append additional data
                         formData.append('action', 'submitReview');
                         formData.append('action1', 'review_capcha');
                         formData.append('token1', token);
-                        $.ajax({
-                            url: "<?= admin_url('admin-ajax.php'); ?>",
-                            type: 'POST',
-                            data: formData,
-                            dataType: 'json',
-                            processData: false,
-                            contentType: false,
-                            beforeSend: function(xhr) {
-                                xhr.setRequestHeader('X-CSRF-TOKEN',
-                                    csrfToken);
-                                xhr.setRequestHeader('X-RECAPTCHA-TOKEN',
-                                    token);
-                                Swal.fire({
-                                    title: 'Processing',
-                                    html: 'Please wait...',
-                                    didOpen: () => {
-                                        Swal.showLoading()
-                                    }
-                                });
-                            },
-                            success: function(response) {
+                        formData.append('activeCount', activeCount);
+
+                        // Show loading
+                        Swal.fire({
+                            title: 'Processing',
+                            html: 'Please wait...',
+                            didOpen: () => {
+                                Swal.showLoading()
+                            }
+                        });
+
+                        // Send AJAX request
+                        fetch('<?= admin_url('admin-ajax.php'); ?>', {
+                                method: 'POST',
+                                body: formData,
+                                headers: {
+                                    'X-CSRF-TOKEN': form.querySelector('[name="csrfToken"]').value,
+                                    'X-RECAPTCHA-TOKEN': token
+                                }
+                            })
+                            .then(response => response.json())
+                            .then(response => {
                                 if (response.status === 1) {
                                     Swal.fire({
                                         icon: 'success',
                                         text: response.mess,
                                     }).then(() => {
-                                        location
-                                            .reload(); // Di chuyển location.reload() vào trong hàm callback
+                                        location.reload();
                                     });
                                 } else {
                                     Swal.fire({
@@ -1185,57 +1351,198 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
                                         text: response.mess,
                                     });
                                 }
-                            },
-                            error: function(xhr) {
+                            })
+                            .catch(error => {
                                 Swal.fire({
                                     icon: 'error',
                                     text: 'An error occurred. Please try again.'
                                 });
-                            }
-                        });
+                            });
                     });
                 });
             }
         });
 
-        $(".click-like").on("click", function() {
-            var $this = $(this);
-            var review = $this.data("review");
-            var user = $this.data("user");
-            var product = $this.data("product");
+        // Helper function to show error messages
+        function showError(input, message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message text-red-500 text-sm mt-1';
+            errorDiv.textContent = message;
+            input.parentNode.appendChild(errorDiv);
+        }
 
-            $.ajax({
-                url: "<?= admin_url('admin-ajax.php'); ?>",
-                type: "POST",
-                data: {
-                    action: "LikeReview",
-                    review: review,
-                    user: user,
-                    product: product,
-                },
-                dataType: "json",
-                success: function(response) {
-                    if (response.status === 1) {
-                        // Đã like
-                        $this.html(response.html);
-                        $this.addClass("liked"); // Thêm class nhận diện đã like
-                    } else if (response.status === 0) {
-                        // Bỏ like
-                        $this.html(response.html);
-                        $this.removeClass("liked"); // Loại bỏ class nhận diện
-                    }
-                },
-                error: function(xhr) {
-                    Swal.fire({
-                        icon: "error",
-                        text: "An error occurred. Please try again.",
+        // Star rating functionality
+        const starRating = document.querySelector('.star-rating');
+        if (starRating) {
+            const stars = starRating.querySelectorAll('.star');
+
+            stars.forEach(star => {
+                star.addEventListener('click', function() {
+                    const rating = this.getAttribute('data-index');
+
+                    // Reset all stars
+                    stars.forEach(s => {
+                        s.src = '<?= $url ?>/assets/image/icon/star-gray.svg';
+                        s.classList.remove('active');
                     });
-                },
+
+                    // Fill stars up to selected rating
+                    for (let i = 0; i < rating; i++) {
+                        stars[i].src = '<?= $url ?>/assets/image/icon/star-yellow.svg';
+                        stars[i].classList.add('active');
+                    }
+                });
             });
-        });
+        }
+    });
+    $(document).ready(function() {
+        //     $("#review-product").on('submit', function(e) {
+        //         e.preventDefault();
+        //     }).validate({
+        //         rules: {
+        //             name_user: {
+        //                 required: true
+        //             },
+        //             email: {
+        //                 required: true,
+        //                 email: true
+        //             },
+        //             title_review: {
+        //                 required: true
+        //             },
+        //             content_review: {
+        //                 required: true
+        //             }
+        //         },
+        //         messages: {
+        //             name_user: {
+        //                 required: "Please enter your name user"
+        //             },
+        //             email: {
+        //                 required: "Please enter your email",
+        //                 email: "Please enter a valid email address"
+        //             },
+        //             title_review: {
+        //                 required: "Please enter your title review"
+        //             },
+        //             content_review: {
+        //                 required: "Please enter your content review"
+        //             }
+        //         },
+        //         submitHandler: function(form) {
+        //             var site_key = '<?php echo get_field('site_key', 'option'); ?>';
+        //             var link = 'http://your-ajax-endpoint-url'; // Thay bằng URL của bạn
+
+        //             grecaptcha.ready(function() {
+        //                 grecaptcha.execute(site_key, {
+        //                     action: 'review_capcha'
+        //                 }).then(function(token) {
+        //                     var id_user = '<?= $id_user ?>';
+        //                     var email = $('input[name="email"]').val();
+        //                     var name_user = $('input[name="name_user"]').val();
+        //                     var title_review = $('input[name="title_review"]').val();
+        //                     var id_product = $('input[name="id_product"]').val();
+        //                     var content_review = $('#content_review').val();
+        //                     var activeCount = $('.star-rating img.active').length;
+        //                     let csrfToken = $('input[name="csrfToken"]').val();
+        //                     var formData = new FormData($('#review-product')[0]);
+        //                     formData.append('email', email);
+        //                     formData.append('name_user', name_user);
+        //                     formData.append('id_user', name_user);
+        //                     formData.append('title_review', title_review);
+        //                     formData.append('id_user', id_user);
+        //                     formData.append('activeCount', activeCount);
+        //                     formData.append('id_product', id_product);
+        //                     formData.append('content_review', content_review);
+        //                     formData.append('action', 'submitReview');
+        //                     formData.append('action1', 'review_capcha');
+        //                     formData.append('token1', token);
+        //                     $.ajax({
+        //                         url: "<?= admin_url('admin-ajax.php'); ?>",
+        //                         type: 'POST',
+        //                         data: formData,
+        //                         dataType: 'json',
+        //                         processData: false,
+        //                         contentType: false,
+        //                         beforeSend: function(xhr) {
+        //                             xhr.setRequestHeader('X-CSRF-TOKEN',
+        //                                 csrfToken);
+        //                             xhr.setRequestHeader('X-RECAPTCHA-TOKEN',
+        //                                 token);
+        //                             Swal.fire({
+        //                                 title: 'Processing',
+        //                                 html: 'Please wait...',
+        //                                 didOpen: () => {
+        //                                     Swal.showLoading()
+        //                                 }
+        //                             });
+        //                         },
+        //                         success: function(response) {
+        //                             if (response.status === 1) {
+        //                                 Swal.fire({
+        //                                     icon: 'success',
+        //                                     text: response.mess,
+        //                                 }).then(() => {
+        //                                     location
+        //                                         .reload(); // Di chuyển location.reload() vào trong hàm callback
+        //                                 });
+        //                             } else {
+        //                                 Swal.fire({
+        //                                     icon: 'warning',
+        //                                     text: response.mess,
+        //                                 });
+        //                             }
+        //                         },
+        //                         error: function(xhr) {
+        //                             Swal.fire({
+        //                                 icon: 'error',
+        //                                 text: 'An error occurred. Please try again.'
+        //                             });
+        //                         }
+        //                     });
+        //                 });
+        //             });
+        //         }
+        //     });
+
+
 
     });
+    $(".click-like").on("click", function() {
+        var $this = $(this);
+        var review = $this.data("review");
+        var user = $this.data("user");
+        var product = $this.data("product");
 
+        $.ajax({
+            url: "<?= admin_url('admin-ajax.php'); ?>",
+            type: "POST",
+            data: {
+                action: "LikeReview",
+                review: review,
+                user: user,
+                product: product,
+            },
+            dataType: "json",
+            success: function(response) {
+                if (response.status === 1) {
+                    // Đã like
+                    $this.html(response.html);
+                    $this.addClass("liked"); // Thêm class nhận diện đã like
+                } else if (response.status === 0) {
+                    // Bỏ like
+                    $this.html(response.html);
+                    $this.removeClass("liked"); // Loại bỏ class nhận diện
+                }
+            },
+            error: function(xhr) {
+                Swal.fire({
+                    icon: "error",
+                    text: "An error occurred. Please try again.",
+                });
+            },
+        });
+    });
     // lọc đánh giá
     $(document).ready(function() {
         // Bắt sự kiện khi người dùng click vào một phần tử có lớp 'comment-choose'
@@ -1318,7 +1625,6 @@ $percent_5 = ($total_ratings > 0) ? ($rating_5 / $total_ratings) * 100 : 0;
         });
     });
 </script>
-
 <!-- description js -->
 <script defer>
     // Lấy tất cả các tab

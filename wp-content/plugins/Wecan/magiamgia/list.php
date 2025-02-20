@@ -39,6 +39,7 @@ $list_voucher = $wpdb->get_results("SELECT * FROM `wp_voucher` ");
 
 ?>
 <style>
+
     .iconloadgif {
         top: 0;
         right: 0;
@@ -46,6 +47,15 @@ $list_voucher = $wpdb->get_results("SELECT * FROM `wp_voucher` ");
         bottom: 0;
         position: absolute;
         margin: auto;
+    }
+    .table-container {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .wp-list-table {
+        min-width: 1800px; /* Đảm bảo bảng rộng hơn để có thể cuộn */
+        table-layout: fixed;
     }
 
     .divgif {
@@ -87,7 +97,7 @@ $list_voucher = $wpdb->get_results("SELECT * FROM `wp_voucher` ");
 
 
     ?>
-    <form class="" method="POST" action="<?php echo $module_path; ?>">
+    <form class="" method="POST" action="<?php echo $module_path; ?>" style="overflow-x:auto ">
         <div class="tablenav top">
             <div class="alignleft actions bulkactions">
                 <select id="bulk-action-selector-top" name="action">
@@ -98,7 +108,7 @@ $list_voucher = $wpdb->get_results("SELECT * FROM `wp_voucher` ");
             </div>
         </div>
 
-        <table class="wp-list-table widefat fixed striped posts">
+        <table class="wp-list-table widefat table-container striped posts">
             <thead>
             <tr class="headline">
                 <td class="manage-column column-cb check-column" id="cb">

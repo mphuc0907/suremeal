@@ -273,8 +273,15 @@ get_header();
                     </div>
                 <?php endif ?>
             </div>
-            <div data-aos="fade-left" data-aos-duration="1500" class="mt-10 xl:mt-0 2xl:ml-[129px] flex-1">
-                <?php echo do_shortcode('[contact-form-7 id="0268a16" title="Form liên hệ" html_class="form-contact flex flex-col gap-4"]'); ?>
+            <div data-aos="fade-left" data-aos-duration="1500" class="form-contact mt-10 xl:mt-0 2xl:ml-[129px] flex-1">
+                <?php if(pll_current_language() == 'en'): ?>
+                    <?php echo do_shortcode('[contact-form-7 id="0268a16" title="Form liên hệ" html_class="form-contact flex flex-col gap-4"]'); ?>
+                <?php elseif(pll_current_language() == 'vn'): ?>
+                    <?php echo do_shortcode('[contact-form-7 id="26ae51d" title="Form liên hệ(VN)" html_class="form-contact flex flex-col gap-4"]'); ?>
+                <?php endif ?>
+                <div class="notice text-[#FF0000]">
+                    <span class="no"></span>
+                </div>
             </div>
         </div>
     </section>
@@ -324,51 +331,101 @@ get_header();
     });
 </script>
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        // Lấy form Contact Form 7
-        const form = document.querySelector('.wpcf7 form');
-
-        if (form) {
-            // Trường email
-            const emailInput = form.querySelector('[name="your_email"]');
-            emailInput.addEventListener('blur', function() {
-                const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailPattern.test(emailInput.value)) {
-                    showError(emailInput, "Please enter a valid email address");
-                } else {
-                    clearError(emailInput);
-                }
-            });
-
-            // Trường số điện thoại
-            const phoneInput = form.querySelector('[name="your_phone"]');
-            phoneInput.addEventListener('blur', function() {
-                const phonePattern = /^[0-9]{10,15}$/; // Chỉ cho phép số từ 10-15 ký tự
-                if (!phonePattern.test(phoneInput.value)) {
-                    showError(phoneInput, "Please enter a valid phone number");
-                } else {
-                    clearError(phoneInput);
-                }
-            });
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('.form-contact form.wpcf7-form');
+    const notice = document.querySelector('.form-contact .notice .no');
+    const submitButton = form.querySelector('button[type="submit"]');
+    const currentLang = '<?php echo pll_current_language(); ?>';
+    
+    const messages = {
+        'en': {
+            required: 'Please fill in all required fields',
+            emailError: 'Please enter a valid email address',
+            phoneError: 'Please enter a valid phone number',
+            submitSuccess: 'Message sent successfully!',
+            loading: 'Sending...',
+            button: 'Send message',
+            notice: 'An error occurred. Please try again.'
+        },
+        'vi': {
+            required: 'Vui lòng điền đầy đủ thông tin',
+            emailError: 'Vui lòng nhập đúng định dạng email',
+            phoneError: 'Vui lòng nhập đúng định dạng số điện thoại',
+            submitSuccess: 'Gửi tin nhắn thành công!',
+            loading: 'Đang gửi...',
+            button: 'Gửi tin nhắn',
+            notice: 'Có lỗi xảy ra. Vui lòng thử lại.'
         }
+    };
 
-        // Hiển thị lỗi
-        function showError(input, message) {
-            clearError(input); // Xóa lỗi cũ nếu có
-            const errorElement = document.createElement('div');
-            errorElement.className = 'error-message text-[#F73131] text-sm';
-            errorElement.innerText = message;
-            input.parentNode.appendChild(errorElement);
-            input.classList.add('border-[#F73131]'); // Đổi màu viền thành đỏ
-        }
-
-        // Xóa lỗi
-        function clearError(input) {
-            const errorElement = input.parentNode.querySelector('.error-message');
-            if (errorElement) {
-                errorElement.remove();
+    if (form) {
+        form.addEventListener('wpcf7beforesubmit', function(e) {
+            let isValid = true;
+            let errorMessage = '';
+            
+            // First priority: Check if all required fields are filled
+            const requiredInputs = form.querySelectorAll('[aria-required="true"]');
+            const emptyFields = Array.from(requiredInputs).filter(input => !input.value.trim());
+            
+            if (emptyFields.length > 0) {
+                isValid = false;
+                errorMessage = messages[currentLang].required;
+            } 
+            // Only check format validations if all required fields are filled
+            else {
+                // Validate email format
+                const emailInput = form.querySelector('.your_email');
+                if (emailInput && !validateEmail(emailInput.value)) {
+                    isValid = false;
+                    errorMessage = messages[currentLang].emailError;
+                }
+                // Only check phone if email is valid
+                else {
+                    // Validate phone format
+                    const phoneInput = form.querySelector('.your_phone');
+                    if (phoneInput && !validatePhone(phoneInput.value)) {
+                        isValid = false;
+                        errorMessage = messages[currentLang].phoneError;
+                    }
+                }
             }
-            input.classList.remove('border-[#F73131]');
-        }
-    });
+
+            if (!isValid) {
+                e.preventDefault();
+                notice.innerHTML = errorMessage;
+            } else {
+                submitButton.innerHTML = messages[currentLang].loading;
+            }
+        });
+
+        form.addEventListener('wpcf7mailsent', function() {
+            notice.innerHTML = messages[currentLang].submitSuccess;
+            form.reset();
+            submitButton.innerHTML = messages[currentLang].button;
+        });
+
+        form.addEventListener('wpcf7mailfailed', function() {
+            notice.innerHTML = messages[currentLang].notice;
+            submitButton.innerHTML = messages[currentLang].button;
+        });
+
+        // Clear notice when user starts typing
+        form.querySelectorAll('input, textarea').forEach(input => {
+            input.addEventListener('input', function() {
+                notice.innerHTML = '';
+            });
+        });
+    }
+
+    function validateEmail(email) {
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return re.test(String(email).toLowerCase());
+    }
+
+    function validatePhone(phone) {
+        // Accepts formats: +84xxxxxxxxx, 84xxxxxxxxx, 0xxxxxxxxx
+        const re = /^(?:\+84|84|0)[1-9]\d{8}$/;
+        return re.test(phone.replace(/\s/g, ''));
+    }
+});
 </script>

@@ -82,9 +82,16 @@ get_header();
                         <?php endif ?>
                     </div>
                     <div class="w-full flex-1">
-                        <div class="w-full flex flex-col gap-12 rounded-[20px] bg-white p-8">
+                        <div class="form-contact w-full flex flex-col gap-12 rounded-[20px] bg-white p-8">
                             <h2 class="text-heading-h4 text-gray-8"><?php pll_e('Send message') ?></h2>
-                            <?php echo do_shortcode('[contact-form-7 id="0268a16" title="Form liên hệ" html_class="form-contact flex flex-col gap-4"]'); ?>
+                            <?php if(pll_current_language() == 'en'): ?>
+                                <?php echo do_shortcode('[contact-form-7 id="0268a16" title="Form liên hệ" html_class="form-contact flex flex-col gap-4"]'); ?>
+                            <?php elseif(pll_current_language() == 'vn'): ?>
+                                <?php echo do_shortcode('[contact-form-7 id="26ae51d" title="Form liên hệ(VN)" html_class="form-contact flex flex-col gap-4"]'); ?>
+                            <?php endif ?>
+                            <div class="notice text-[#FF0000]">
+                                <span class="no"></span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -139,5 +146,103 @@ get_header();
         textarea.removeAttribute('cols');
         textarea.removeAttribute('rows');
         textarea.classList.add('min-h-[99px]', 'border-[#DEDFE0]', 'text-[#373A51]', 'placeholder-[#6B7280]', 'bg-[#F9FAFB]');
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('.form-contact form.wpcf7-form');
+        const notice = document.querySelector('.form-contact .notice .no');
+        const submitButton = form.querySelector('button[type="submit"]');
+        const currentLang = '<?php echo pll_current_language(); ?>';
+        
+        const messages = {
+            'en': {
+                required: 'Please fill in all required fields',
+                emailError: 'Please enter a valid email address',
+                phoneError: 'Please enter a valid phone number',
+                submitSuccess: 'Message sent successfully!',
+                loading: 'Sending...',
+                button: 'Send message',
+                notice: 'An error occurred. Please try again.'
+            },
+            'vi': {
+                required: 'Vui lòng điền đầy đủ thông tin',
+                emailError: 'Vui lòng nhập đúng định dạng email',
+                phoneError: 'Vui lòng nhập đúng định dạng số điện thoại',
+                submitSuccess: 'Gửi tin nhắn thành công!',
+                loading: 'Đang gửi...',
+                button: 'Gửi tin nhắn',
+                notice: 'Có lỗi xảy ra. Vui lòng thử lại.'
+            }
+        };
+
+        if (form) {
+            form.addEventListener('wpcf7beforesubmit', function(e) {
+                let isValid = true;
+                let errorMessage = '';
+                
+                // First priority: Check if all required fields are filled
+                const requiredInputs = form.querySelectorAll('[aria-required="true"]');
+                const emptyFields = Array.from(requiredInputs).filter(input => !input.value.trim());
+                
+                if (emptyFields.length > 0) {
+                    isValid = false;
+                    errorMessage = messages[currentLang].required;
+                } 
+                // Only check format validations if all required fields are filled
+                else {
+                    // Validate email format
+                    const emailInput = form.querySelector('.your_email');
+                    if (emailInput && !validateEmail(emailInput.value)) {
+                        isValid = false;
+                        errorMessage = messages[currentLang].emailError;
+                    }
+                    // Only check phone if email is valid
+                    else {
+                        // Validate phone format
+                        const phoneInput = form.querySelector('.your_phone');
+                        if (phoneInput && !validatePhone(phoneInput.value)) {
+                            isValid = false;
+                            errorMessage = messages[currentLang].phoneError;
+                        }
+                    }
+                }
+
+                if (!isValid) {
+                    e.preventDefault();
+                    notice.innerHTML = errorMessage;
+                } else {
+                    submitButton.innerHTML = messages[currentLang].loading;
+                }
+            });
+
+            form.addEventListener('wpcf7mailsent', function() {
+                notice.innerHTML = messages[currentLang].submitSuccess;
+                form.reset();
+                submitButton.innerHTML = messages[currentLang].button;
+            });
+
+            form.addEventListener('wpcf7mailfailed', function() {
+                notice.innerHTML = messages[currentLang].notice;
+                submitButton.innerHTML = messages[currentLang].button;
+            });
+
+            // Clear notice when user starts typing
+            form.querySelectorAll('input, textarea').forEach(input => {
+                input.addEventListener('input', function() {
+                    notice.innerHTML = '';
+                });
+            });
+        }
+
+        function validateEmail(email) {
+            const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return re.test(String(email).toLowerCase());
+        }
+
+        function validatePhone(phone) {
+            // Accepts formats: +84xxxxxxxxx, 84xxxxxxxxx, 0xxxxxxxxx
+            const re = /^(?:\+84|84|0)[1-9]\d{8}$/;
+            return re.test(phone.replace(/\s/g, ''));
+        }
     });
 </script>
